@@ -1,0 +1,23 @@
+# Xcode
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+Packages/
+
+# Config (NEVER commit real values)
+Config.xcconfig
+GoogleService-Info.plist
+*.xcconfig
+
+# Supabase
+.env
+supabase/.temp/
+
+# macOS
+.DS_Store

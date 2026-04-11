@@ -1,0 +1,777 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		04B328B6449543607FA2DDF0 /* ContactDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEDAA9A14198102DF397B767 /* ContactDetailView.swift */; };
+		04E55AEF515EE86E202C7DAB /* ContactAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26F150070225C75366A3AFAD /* ContactAvatarView.swift */; };
+		0BC726E0E813E8DF12A6B3D9 /* ContactRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CA73B832129CDE086ACC8B0 /* ContactRowView.swift */; };
+		0C413D2E294857798E369D29 /* SearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 203D0166857F71A1B35FC5EC /* SearchViewModel.swift */; };
+		0CAF237431F0B9D3CB915453 /* ContactListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06B1FD2FBD46D4830B249080 /* ContactListView.swift */; };
+		1334C1F630DA440B6BCB6B78 /* ToneSetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ADE6AAC9ADF026B30490710 /* ToneSetupView.swift */; };
+		161DF4D20CAFDB7492F933FD /* GmailService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B328840337B343B6690BC6D /* GmailService.swift */; };
+		164BFABE13B3067846E9863E /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD4E977F05D230F4BB164A2E /* AuthViewModel.swift */; };
+		1DCC2A47A67455732885F9C0 /* LoadingShimmer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E626937F026FE4EA56B4976 /* LoadingShimmer.swift */; };
+		21D739FAAA47E7885E267D1C /* ContactDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1CDBAAF514ACBCBE83A9A67 /* ContactDraft.swift */; };
+		25DE120F5A878357F0960A9F /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7417C62E36DF9E08CD56C4F /* ShareViewController.swift */; };
+		26C57B77BA7A0B77B0B6AB11 /* PingApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7DD9D4337004D4575FF0FC3 /* PingApp.swift */; };
+		26EAE3ACB4066AF8804D382D /* NetworkViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 339C5CB90AD7BBB9C7A862E3 /* NetworkViewModel.swift */; };
+		2877FE6AF06EAAB555D0EDCB /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = D261444FB5EF3EAB6B2D665B /* APIClient.swift */; };
+		39E57EF2B5A4F4354DC425B0 /* MessageDraftView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE57DCF5A09BB9AE576EA47C /* MessageDraftView.swift */; };
+		3F281D7BAAC12DAA86E5E838 /* Inject in Frameworks */ = {isa = PBXBuildFile; productRef = 4E3C4AC0B7BDC98513BD474F /* Inject */; };
+		4471D9210F42FE33132970D4 /* GoogleIntegrationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04326C68DDFC7EBB472817D5 /* GoogleIntegrationState.swift */; };
+		48C3956787AC37025FB7CA2F /* ContactViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9752D1E61BFD06F0416999C6 /* ContactViewModel.swift */; };
+		492302553121E1205B2C8752 /* Interaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 757EED5584959EC2C2221BFD /* Interaction.swift */; };
+		4A3E4CC43FBCF3277E2B53C4 /* GeminiKeySetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50CBFAE17EF12040653E0748 /* GeminiKeySetupView.swift */; };
+		4DAAEF848CB0153740EE59F9 /* SemanticSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FD365F96021FA8C2C3032C0 /* SemanticSearchView.swift */; };
+		517D7E1AEE02023668BD6AB3 /* PingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05D30C27C25F87B4A92DE01A /* PingViewModel.swift */; };
+		52737CDE98ED25E9A126B73D /* PingButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B356B59B1E76A4CF7F93D87 /* PingButton.swift */; };
+		561552BC4F188CBABD06D35F /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3D4B16A212D2B95B80FF169 /* WelcomeView.swift */; };
+		5D810AB41F7032C41E6AD557 /* GoogleAuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DFF8E7F6C6896BBDDF20BC7 /* GoogleAuthService.swift */; };
+		5E465428D5F513B2DE611481 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 51F8DF3D7A536EEE266D711E /* Supabase */; };
+		7035C7FE65C8AC75092F13FB /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = AAFA2D3AF70E5B6BCD0BD540 /* Supabase */; };
+		79EA2474FDAF85607462B03B /* Nudge.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA20E39B25E74F780F3E8CCD /* Nudge.swift */; };
+		7B631339AB34CF0B091D479A /* PingTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2089695556DDB0E3A50F6599 /* PingTabView.swift */; };
+		84127737322C5172A5757175 /* GoogleCalendarService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36230467E848371F407A3A97 /* GoogleCalendarService.swift */; };
+		84D889BC035D94560A81EB73 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86E34F9654BD53BF9D57AFF7 /* Config.swift */; };
+		85E9545541C307553C4249C4 /* GoalsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96E2E4AA808B8F73FAFA9B6F /* GoalsPanelView.swift */; };
+		8CB18A14E9E5B14CDEA2AF13 /* Contact+Preview.swift in Sources */ = {isa = PBXBuildFile; fileRef = EAA8446036077F4F75405529 /* Contact+Preview.swift */; };
+		95FACEE0595ECCB2A033B592 /* NudgeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25FA78B1DF7FD9757136F75 /* NudgeService.swift */; };
+		994817F795B6966A52599D63 /* Contact.swift in Sources */ = {isa = PBXBuildFile; fileRef = 097B217CC4655EB413589673 /* Contact.swift */; };
+		9E8B64F59E84E617C118BB96 /* Goal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B89B8AFE3CA063948E148C6 /* Goal.swift */; };
+		9EE34B5D4328776CD6BFC6BB /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 134B1D7BA3401418CE360D31 /* KeychainHelper.swift */; };
+		AEAB91B80F77384196D3E1E6 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94C15EE4B0E0E8AF78B57678 /* ContentView.swift */; };
+		B2441435BA07F7F8C019D147 /* SpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8FD0761C82A61FC978BD8A1 /* SpeechService.swift */; };
+		B6A11640F9C354B97F970881 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = D72F15F894FEB7A00372D394 /* GoogleSignIn */; };
+		B785F6A13CC0708AACAD4CA5 /* ContactCardGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A0C4CDAEE16DE1F218FAEB /* ContactCardGridView.swift */; };
+		BE116F2F560FA917487B2269 /* Color+Ping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 939D63076DF104CFF8E08834 /* Color+Ping.swift */; };
+		C1013F07B24F16BA41E3238A /* NetworkTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71EAA4EF12BBD8D3B2409737 /* NetworkTabView.swift */; };
+		C57815B79E0D4AFA2CA13291 /* Date+Ping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68703A44F19082DD4A293E38 /* Date+Ping.swift */; };
+		C8A89B57AC9F4FBD68BEC779 /* GeminiService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C401F986367D2F7C02006ED9 /* GeminiService.swift */; };
+		CBCE5CBCF23397476BFC8A49 /* NudgeCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B83E716C9DF1DAF5AEDF1DA /* NudgeCardView.swift */; };
+		CC43EC133CD65F96776F8CE1 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 1FBCD1151955FE949B4F9CC8 /* GoogleService-Info.plist */; };
+		D07BDFFC10E2C65808110066 /* LinkedInImportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3472D9C1CEAC9F72CD65C6E /* LinkedInImportService.swift */; };
+		D4BB82CCB1DA49D3C24BF520 /* SupabaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54518848695EC13B95955434 /* SupabaseService.swift */; };
+		DA6588B337F64A415E65703C /* WarmthDot.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB0707A27228687E9003E559 /* WarmthDot.swift */; };
+		DAC81C323F7750EA881C009F /* ProfileTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 285BD1BF80781841EE9AE262 /* ProfileTabView.swift */; };
+		E13DC4726E837B9456AF2859 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 38C7B41AC566CD880C3BB9BD /* Assets.xcassets */; };
+		E98421B1C6A94D6B2ABA8424 /* SearchTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9240FF41DFC00E1D27CFCB1 /* SearchTabView.swift */; };
+		F15629372D3F911B122A340C /* QuickCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3B6041B5043590F6399AA43 /* QuickCaptureView.swift */; };
+		FA0B6E3F67A27E0D6CD6D8BA /* View+Ping.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE684ABBD395E8EB8520ED06 /* View+Ping.swift */; };
+		FDB4E909CECD569136D18640 /* GoogleContactsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C6AE69DD49AAF618350C48 /* GoogleContactsService.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		04326C68DDFC7EBB472817D5 /* GoogleIntegrationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleIntegrationState.swift; sourceTree = "<group>"; };
+		05D30C27C25F87B4A92DE01A /* PingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PingViewModel.swift; sourceTree = "<group>"; };
+		06B1FD2FBD46D4830B249080 /* ContactListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactListView.swift; sourceTree = "<group>"; };
+		097B217CC4655EB413589673 /* Contact.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Contact.swift; sourceTree = "<group>"; };
+		0FF70EFC7DBA33779FD83776 /* Ping.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Ping.entitlements; sourceTree = "<group>"; };
+		134B1D7BA3401418CE360D31 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		1FBCD1151955FE949B4F9CC8 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		1FEED48EE4331119D117E7C6 /* PingShareExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PingShareExtension.entitlements; sourceTree = "<group>"; };
+		203D0166857F71A1B35FC5EC /* SearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchViewModel.swift; sourceTree = "<group>"; };
+		2089695556DDB0E3A50F6599 /* PingTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PingTabView.swift; sourceTree = "<group>"; };
+		26F150070225C75366A3AFAD /* ContactAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactAvatarView.swift; sourceTree = "<group>"; };
+		285BD1BF80781841EE9AE262 /* ProfileTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileTabView.swift; sourceTree = "<group>"; };
+		2ADE6AAC9ADF026B30490710 /* ToneSetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToneSetupView.swift; sourceTree = "<group>"; };
+		339C5CB90AD7BBB9C7A862E3 /* NetworkViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkViewModel.swift; sourceTree = "<group>"; };
+		36230467E848371F407A3A97 /* GoogleCalendarService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleCalendarService.swift; sourceTree = "<group>"; };
+		38C7B41AC566CD880C3BB9BD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		4B356B59B1E76A4CF7F93D87 /* PingButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PingButton.swift; sourceTree = "<group>"; };
+		4DFF8E7F6C6896BBDDF20BC7 /* GoogleAuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleAuthService.swift; sourceTree = "<group>"; };
+		50CBFAE17EF12040653E0748 /* GeminiKeySetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiKeySetupView.swift; sourceTree = "<group>"; };
+		54518848695EC13B95955434 /* SupabaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseService.swift; sourceTree = "<group>"; };
+		5DA31B5ACA1FDF5EB780B638 /* PingShareExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PingShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		68703A44F19082DD4A293E38 /* Date+Ping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Ping.swift"; sourceTree = "<group>"; };
+		6B328840337B343B6690BC6D /* GmailService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GmailService.swift; sourceTree = "<group>"; };
+		6E626937F026FE4EA56B4976 /* LoadingShimmer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingShimmer.swift; sourceTree = "<group>"; };
+		6FD365F96021FA8C2C3032C0 /* SemanticSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticSearchView.swift; sourceTree = "<group>"; };
+		71EAA4EF12BBD8D3B2409737 /* NetworkTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkTabView.swift; sourceTree = "<group>"; };
+		757EED5584959EC2C2221BFD /* Interaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Interaction.swift; sourceTree = "<group>"; };
+		86E34F9654BD53BF9D57AFF7 /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		8B83E716C9DF1DAF5AEDF1DA /* NudgeCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NudgeCardView.swift; sourceTree = "<group>"; };
+		939D63076DF104CFF8E08834 /* Color+Ping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Ping.swift"; sourceTree = "<group>"; };
+		94C15EE4B0E0E8AF78B57678 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		96E2E4AA808B8F73FAFA9B6F /* GoalsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalsPanelView.swift; sourceTree = "<group>"; };
+		9752D1E61BFD06F0416999C6 /* ContactViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactViewModel.swift; sourceTree = "<group>"; };
+		9B89B8AFE3CA063948E148C6 /* Goal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Goal.swift; sourceTree = "<group>"; };
+		9CA73B832129CDE086ACC8B0 /* ContactRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactRowView.swift; sourceTree = "<group>"; };
+		AD4E977F05D230F4BB164A2E /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
+		AEDAA9A14198102DF397B767 /* ContactDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactDetailView.swift; sourceTree = "<group>"; };
+		B3472D9C1CEAC9F72CD65C6E /* LinkedInImportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkedInImportService.swift; sourceTree = "<group>"; };
+		B3B6041B5043590F6399AA43 /* QuickCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCaptureView.swift; sourceTree = "<group>"; };
+		B5C8F83E9CBB7B5717E22773 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		BE57DCF5A09BB9AE576EA47C /* MessageDraftView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageDraftView.swift; sourceTree = "<group>"; };
+		C1CDBAAF514ACBCBE83A9A67 /* ContactDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactDraft.swift; sourceTree = "<group>"; };
+		C25FA78B1DF7FD9757136F75 /* NudgeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NudgeService.swift; sourceTree = "<group>"; };
+		C401F986367D2F7C02006ED9 /* GeminiService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeminiService.swift; sourceTree = "<group>"; };
+		C7A0C4CDAEE16DE1F218FAEB /* ContactCardGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactCardGridView.swift; sourceTree = "<group>"; };
+		C8C6AE69DD49AAF618350C48 /* GoogleContactsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoogleContactsService.swift; sourceTree = "<group>"; };
+		C9240FF41DFC00E1D27CFCB1 /* SearchTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchTabView.swift; sourceTree = "<group>"; };
+		D261444FB5EF3EAB6B2D665B /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		DB4BE060956FB1ACEAC2591B /* Ping.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Ping.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E8FD0761C82A61FC978BD8A1 /* SpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechService.swift; sourceTree = "<group>"; };
+		EA20E39B25E74F780F3E8CCD /* Nudge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Nudge.swift; sourceTree = "<group>"; };
+		EAA8446036077F4F75405529 /* Contact+Preview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Contact+Preview.swift"; sourceTree = "<group>"; };
+		EB0707A27228687E9003E559 /* WarmthDot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarmthDot.swift; sourceTree = "<group>"; };
+		F3D4B16A212D2B95B80FF169 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		F7417C62E36DF9E08CD56C4F /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		F7DD9D4337004D4575FF0FC3 /* PingApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PingApp.swift; sourceTree = "<group>"; };
+		FE684ABBD395E8EB8520ED06 /* View+Ping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+Ping.swift"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7D9A7AA22D0863ADA0C4F3EB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5E465428D5F513B2DE611481 /* Supabase in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9D05FB8D8D7F0319FEB6F66B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7035C7FE65C8AC75092F13FB /* Supabase in Frameworks */,
+				B6A11640F9C354B97F970881 /* GoogleSignIn in Frameworks */,
+				3F281D7BAAC12DAA86E5E838 /* Inject in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		11B1E81A7576D9DD3EC215BD /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				097B217CC4655EB413589673 /* Contact.swift */,
+				EAA8446036077F4F75405529 /* Contact+Preview.swift */,
+				C1CDBAAF514ACBCBE83A9A67 /* ContactDraft.swift */,
+				9B89B8AFE3CA063948E148C6 /* Goal.swift */,
+				04326C68DDFC7EBB472817D5 /* GoogleIntegrationState.swift */,
+				757EED5584959EC2C2221BFD /* Interaction.swift */,
+				EA20E39B25E74F780F3E8CCD /* Nudge.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		24C9F620DF318B2C9259165A /* Ping */ = {
+			isa = PBXGroup;
+			children = (
+				38C7B41AC566CD880C3BB9BD /* Assets.xcassets */,
+				94C15EE4B0E0E8AF78B57678 /* ContentView.swift */,
+				1FBCD1151955FE949B4F9CC8 /* GoogleService-Info.plist */,
+				B5C8F83E9CBB7B5717E22773 /* Info.plist */,
+				0FF70EFC7DBA33779FD83776 /* Ping.entitlements */,
+				F7DD9D4337004D4575FF0FC3 /* PingApp.swift */,
+				28CFA2BCC3E3DE46A1FDA7BE /* Extensions */,
+				11B1E81A7576D9DD3EC215BD /* Models */,
+				4720F875109F02C735FE2CCD /* Services */,
+				A8DEE3B2D9C543D6762B8E70 /* Utilities */,
+				313BFAE80801C7E45C48205A /* ViewModels */,
+				8DD838720D39779C3CF25D7F /* Views */,
+			);
+			path = Ping;
+			sourceTree = "<group>";
+		};
+		28CFA2BCC3E3DE46A1FDA7BE /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				939D63076DF104CFF8E08834 /* Color+Ping.swift */,
+				68703A44F19082DD4A293E38 /* Date+Ping.swift */,
+				FE684ABBD395E8EB8520ED06 /* View+Ping.swift */,
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+		313BFAE80801C7E45C48205A /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				AD4E977F05D230F4BB164A2E /* AuthViewModel.swift */,
+				9752D1E61BFD06F0416999C6 /* ContactViewModel.swift */,
+				339C5CB90AD7BBB9C7A862E3 /* NetworkViewModel.swift */,
+				05D30C27C25F87B4A92DE01A /* PingViewModel.swift */,
+				203D0166857F71A1B35FC5EC /* SearchViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		4720F875109F02C735FE2CCD /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				C401F986367D2F7C02006ED9 /* GeminiService.swift */,
+				6B328840337B343B6690BC6D /* GmailService.swift */,
+				4DFF8E7F6C6896BBDDF20BC7 /* GoogleAuthService.swift */,
+				36230467E848371F407A3A97 /* GoogleCalendarService.swift */,
+				C8C6AE69DD49AAF618350C48 /* GoogleContactsService.swift */,
+				B3472D9C1CEAC9F72CD65C6E /* LinkedInImportService.swift */,
+				C25FA78B1DF7FD9757136F75 /* NudgeService.swift */,
+				E8FD0761C82A61FC978BD8A1 /* SpeechService.swift */,
+				54518848695EC13B95955434 /* SupabaseService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		53EA48FCE69CA5C5E02DF01C /* Search */ = {
+			isa = PBXGroup;
+			children = (
+				96E2E4AA808B8F73FAFA9B6F /* GoalsPanelView.swift */,
+				6FD365F96021FA8C2C3032C0 /* SemanticSearchView.swift */,
+			);
+			path = Search;
+			sourceTree = "<group>";
+		};
+		736E2D985492DAB3E7ABC9E6 /* PingShareExtension */ = {
+			isa = PBXGroup;
+			children = (
+				1FEED48EE4331119D117E7C6 /* PingShareExtension.entitlements */,
+				F7417C62E36DF9E08CD56C4F /* ShareViewController.swift */,
+			);
+			path = PingShareExtension;
+			sourceTree = "<group>";
+		};
+		8DD838720D39779C3CF25D7F /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				F7E3B6C695D499A678C25D28 /* Auth */,
+				F0860CFAB8F2AFAF14CA12CD /* Components */,
+				C423D77251CDCED13E9B486D /* Contacts */,
+				9CD9C413E143E93B2BEAF95E /* Nudges */,
+				53EA48FCE69CA5C5E02DF01C /* Search */,
+				A0A876F5A377249F10BE232F /* Tabs */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		9CD9C413E143E93B2BEAF95E /* Nudges */ = {
+			isa = PBXGroup;
+			children = (
+				BE57DCF5A09BB9AE576EA47C /* MessageDraftView.swift */,
+				8B83E716C9DF1DAF5AEDF1DA /* NudgeCardView.swift */,
+			);
+			path = Nudges;
+			sourceTree = "<group>";
+		};
+		A02423B6C8B08B7EA8498178 = {
+			isa = PBXGroup;
+			children = (
+				24C9F620DF318B2C9259165A /* Ping */,
+				736E2D985492DAB3E7ABC9E6 /* PingShareExtension */,
+				A9B87E8D0F6F0C9AE7E7E82C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A0A876F5A377249F10BE232F /* Tabs */ = {
+			isa = PBXGroup;
+			children = (
+				71EAA4EF12BBD8D3B2409737 /* NetworkTabView.swift */,
+				2089695556DDB0E3A50F6599 /* PingTabView.swift */,
+				285BD1BF80781841EE9AE262 /* ProfileTabView.swift */,
+				C9240FF41DFC00E1D27CFCB1 /* SearchTabView.swift */,
+			);
+			path = Tabs;
+			sourceTree = "<group>";
+		};
+		A8DEE3B2D9C543D6762B8E70 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				D261444FB5EF3EAB6B2D665B /* APIClient.swift */,
+				86E34F9654BD53BF9D57AFF7 /* Config.swift */,
+				134B1D7BA3401418CE360D31 /* KeychainHelper.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		A9B87E8D0F6F0C9AE7E7E82C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				DB4BE060956FB1ACEAC2591B /* Ping.app */,
+				5DA31B5ACA1FDF5EB780B638 /* PingShareExtension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C423D77251CDCED13E9B486D /* Contacts */ = {
+			isa = PBXGroup;
+			children = (
+				C7A0C4CDAEE16DE1F218FAEB /* ContactCardGridView.swift */,
+				AEDAA9A14198102DF397B767 /* ContactDetailView.swift */,
+				06B1FD2FBD46D4830B249080 /* ContactListView.swift */,
+				B3B6041B5043590F6399AA43 /* QuickCaptureView.swift */,
+			);
+			path = Contacts;
+			sourceTree = "<group>";
+		};
+		F0860CFAB8F2AFAF14CA12CD /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				26F150070225C75366A3AFAD /* ContactAvatarView.swift */,
+				9CA73B832129CDE086ACC8B0 /* ContactRowView.swift */,
+				6E626937F026FE4EA56B4976 /* LoadingShimmer.swift */,
+				4B356B59B1E76A4CF7F93D87 /* PingButton.swift */,
+				EB0707A27228687E9003E559 /* WarmthDot.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		F7E3B6C695D499A678C25D28 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				50CBFAE17EF12040653E0748 /* GeminiKeySetupView.swift */,
+				2ADE6AAC9ADF026B30490710 /* ToneSetupView.swift */,
+				F3D4B16A212D2B95B80FF169 /* WelcomeView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B70FA422A121C82DC3820E64 /* PingShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CC31D04D4C25AE924C9F7F0B /* Build configuration list for PBXNativeTarget "PingShareExtension" */;
+			buildPhases = (
+				FAA5F86C72B4E8915EF739F1 /* Sources */,
+				7D9A7AA22D0863ADA0C4F3EB /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PingShareExtension;
+			packageProductDependencies = (
+				51F8DF3D7A536EEE266D711E /* Supabase */,
+			);
+			productName = PingShareExtension;
+			productReference = 5DA31B5ACA1FDF5EB780B638 /* PingShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		F11C4A8E12EA5159899C95F5 /* Ping */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 278B05766CC8B8E71A6B2837 /* Build configuration list for PBXNativeTarget "Ping" */;
+			buildPhases = (
+				C255A03EFDA6B3F9699390D9 /* Sources */,
+				0FD94EF7FCF9100B594CBECD /* Resources */,
+				9D05FB8D8D7F0319FEB6F66B /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Ping;
+			packageProductDependencies = (
+				AAFA2D3AF70E5B6BCD0BD540 /* Supabase */,
+				D72F15F894FEB7A00372D394 /* GoogleSignIn */,
+				4E3C4AC0B7BDC98513BD474F /* Inject */,
+			);
+			productName = Ping;
+			productReference = DB4BE060956FB1ACEAC2591B /* Ping.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		B9E9704F4D85DED7987417C2 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					F11C4A8E12EA5159899C95F5 = {
+						DevelopmentTeam = B5ZA7KN3V5;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 73BBE7CE9FAEB2C283B1AAA1 /* Build configuration list for PBXProject "Ping" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = A02423B6C8B08B7EA8498178;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				0356F75BEFF54E1A5E9C55B9 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				F6F93117FE21A038888D7A66 /* XCRemoteSwiftPackageReference "Inject" */,
+				E0C38CFC336E15F7B2588C65 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = A9B87E8D0F6F0C9AE7E7E82C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F11C4A8E12EA5159899C95F5 /* Ping */,
+				B70FA422A121C82DC3820E64 /* PingShareExtension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0FD94EF7FCF9100B594CBECD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E13DC4726E837B9456AF2859 /* Assets.xcassets in Resources */,
+				CC43EC133CD65F96776F8CE1 /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C255A03EFDA6B3F9699390D9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2877FE6AF06EAAB555D0EDCB /* APIClient.swift in Sources */,
+				164BFABE13B3067846E9863E /* AuthViewModel.swift in Sources */,
+				BE116F2F560FA917487B2269 /* Color+Ping.swift in Sources */,
+				84D889BC035D94560A81EB73 /* Config.swift in Sources */,
+				8CB18A14E9E5B14CDEA2AF13 /* Contact+Preview.swift in Sources */,
+				994817F795B6966A52599D63 /* Contact.swift in Sources */,
+				04E55AEF515EE86E202C7DAB /* ContactAvatarView.swift in Sources */,
+				B785F6A13CC0708AACAD4CA5 /* ContactCardGridView.swift in Sources */,
+				04B328B6449543607FA2DDF0 /* ContactDetailView.swift in Sources */,
+				21D739FAAA47E7885E267D1C /* ContactDraft.swift in Sources */,
+				0CAF237431F0B9D3CB915453 /* ContactListView.swift in Sources */,
+				0BC726E0E813E8DF12A6B3D9 /* ContactRowView.swift in Sources */,
+				48C3956787AC37025FB7CA2F /* ContactViewModel.swift in Sources */,
+				AEAB91B80F77384196D3E1E6 /* ContentView.swift in Sources */,
+				C57815B79E0D4AFA2CA13291 /* Date+Ping.swift in Sources */,
+				4A3E4CC43FBCF3277E2B53C4 /* GeminiKeySetupView.swift in Sources */,
+				C8A89B57AC9F4FBD68BEC779 /* GeminiService.swift in Sources */,
+				161DF4D20CAFDB7492F933FD /* GmailService.swift in Sources */,
+				9E8B64F59E84E617C118BB96 /* Goal.swift in Sources */,
+				85E9545541C307553C4249C4 /* GoalsPanelView.swift in Sources */,
+				5D810AB41F7032C41E6AD557 /* GoogleAuthService.swift in Sources */,
+				84127737322C5172A5757175 /* GoogleCalendarService.swift in Sources */,
+				FDB4E909CECD569136D18640 /* GoogleContactsService.swift in Sources */,
+				4471D9210F42FE33132970D4 /* GoogleIntegrationState.swift in Sources */,
+				492302553121E1205B2C8752 /* Interaction.swift in Sources */,
+				9EE34B5D4328776CD6BFC6BB /* KeychainHelper.swift in Sources */,
+				D07BDFFC10E2C65808110066 /* LinkedInImportService.swift in Sources */,
+				1DCC2A47A67455732885F9C0 /* LoadingShimmer.swift in Sources */,
+				39E57EF2B5A4F4354DC425B0 /* MessageDraftView.swift in Sources */,
+				C1013F07B24F16BA41E3238A /* NetworkTabView.swift in Sources */,
+				26EAE3ACB4066AF8804D382D /* NetworkViewModel.swift in Sources */,
+				79EA2474FDAF85607462B03B /* Nudge.swift in Sources */,
+				CBCE5CBCF23397476BFC8A49 /* NudgeCardView.swift in Sources */,
+				95FACEE0595ECCB2A033B592 /* NudgeService.swift in Sources */,
+				26C57B77BA7A0B77B0B6AB11 /* PingApp.swift in Sources */,
+				52737CDE98ED25E9A126B73D /* PingButton.swift in Sources */,
+				7B631339AB34CF0B091D479A /* PingTabView.swift in Sources */,
+				517D7E1AEE02023668BD6AB3 /* PingViewModel.swift in Sources */,
+				DAC81C323F7750EA881C009F /* ProfileTabView.swift in Sources */,
+				F15629372D3F911B122A340C /* QuickCaptureView.swift in Sources */,
+				E98421B1C6A94D6B2ABA8424 /* SearchTabView.swift in Sources */,
+				0C413D2E294857798E369D29 /* SearchViewModel.swift in Sources */,
+				4DAAEF848CB0153740EE59F9 /* SemanticSearchView.swift in Sources */,
+				B2441435BA07F7F8C019D147 /* SpeechService.swift in Sources */,
+				D4BB82CCB1DA49D3C24BF520 /* SupabaseService.swift in Sources */,
+				1334C1F630DA440B6BCB6B78 /* ToneSetupView.swift in Sources */,
+				FA0B6E3F67A27E0D6CD6D8BA /* View+Ping.swift in Sources */,
+				DA6588B337F64A415E65703C /* WarmthDot.swift in Sources */,
+				561552BC4F188CBABD06D35F /* WelcomeView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FAA5F86C72B4E8915EF739F1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				25DE120F5A878357F0960A9F /* ShareViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		2BC2E3A501E28EC9050517AB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Ping/Ping.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = B5ZA7KN3V5;
+				INFOPLIST_FILE = Ping/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.v1.ping;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		73785A7C176C262B2627931B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Ping/Ping.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = B5ZA7KN3V5;
+				INFOPLIST_FILE = Ping/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.v1.ping;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		8F3F73FD7AC1E53272AB60BC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = PingShareExtension/PingShareExtension.entitlements;
+				INFOPLIST_FILE = PingShareExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.v1.ping.ShareExtension;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		925C61FD0ECB7A62CE05EC40 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = PingShareExtension/PingShareExtension.entitlements;
+				INFOPLIST_FILE = PingShareExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.v1.ping.ShareExtension;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B7C94E8EE46193BF5C900953 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		E1EF64693C93F74DF4AFD463 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		278B05766CC8B8E71A6B2837 /* Build configuration list for PBXNativeTarget "Ping" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				73785A7C176C262B2627931B /* Debug */,
+				2BC2E3A501E28EC9050517AB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		73BBE7CE9FAEB2C283B1AAA1 /* Build configuration list for PBXProject "Ping" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B7C94E8EE46193BF5C900953 /* Debug */,
+				E1EF64693C93F74DF4AFD463 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CC31D04D4C25AE924C9F7F0B /* Build configuration list for PBXNativeTarget "PingShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				925C61FD0ECB7A62CE05EC40 /* Debug */,
+				8F3F73FD7AC1E53272AB60BC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		0356F75BEFF54E1A5E9C55B9 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 7.0.0;
+			};
+		};
+		E0C38CFC336E15F7B2588C65 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+		F6F93117FE21A038888D7A66 /* XCRemoteSwiftPackageReference "Inject" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/krzysztofzablocki/Inject";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.5.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4E3C4AC0B7BDC98513BD474F /* Inject */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F6F93117FE21A038888D7A66 /* XCRemoteSwiftPackageReference "Inject" */;
+			productName = Inject;
+		};
+		51F8DF3D7A536EEE266D711E /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E0C38CFC336E15F7B2588C65 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+		AAFA2D3AF70E5B6BCD0BD540 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E0C38CFC336E15F7B2588C65 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+		D72F15F894FEB7A00372D394 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0356F75BEFF54E1A5E9C55B9 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = B9E9704F4D85DED7987417C2 /* Project object */;
+}
