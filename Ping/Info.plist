@@ -33,6 +33,10 @@
 	<string>$(GOOGLE_CLIENT_ID)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Ping uses your microphone so you can quickly capture contact notes by voice.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Ping converts your speech to text to help you save quick contact notes.</string>
 	<key>SUPABASE_ANON_KEY</key>
 	<string>$(SUPABASE_ANON_KEY)</string>
 	<key>SUPABASE_HOST</key>

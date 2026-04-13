@@ -19,7 +19,16 @@
 //     "data":         { "nudge_id": "...", "contact_id": "..." }
 //   }
 
-const APNS_HOST = 'https://api.push.apple.com'
+function apnsHostFromEnv(): string {
+  const explicitHost = Deno.env.get('APNS_HOST')
+  if (explicitHost) return explicitHost
+
+  const env = (Deno.env.get('APNS_ENV') ?? 'production').toLowerCase()
+  if (env === 'sandbox' || env === 'development' || env === 'dev') {
+    return 'https://api.sandbox.push.apple.com'
+  }
+  return 'https://api.push.apple.com'
+}
 
 // ──────────────────────────────────────────────────────────────────────
 // JWT HELPERS
@@ -79,6 +88,7 @@ Deno.serve(async (req: Request) => {
   const teamId    = Deno.env.get('APNS_TEAM_ID')
   const bundleId  = Deno.env.get('APNS_BUNDLE_ID')
   const pemKey    = Deno.env.get('APNS_PRIVATE_KEY')
+  const apnsHost  = apnsHostFromEnv()
 
   if (!keyId || !teamId || !bundleId || !pemKey) {
     console.error('send-push: missing required env vars (APNS_KEY_ID, APNS_TEAM_ID, APNS_BUNDLE_ID, APNS_PRIVATE_KEY)')
@@ -126,7 +136,7 @@ Deno.serve(async (req: Request) => {
     ...(data ?? {}),
   }
 
-  const url = `${APNS_HOST}/3/device/${device_token}`
+  const url = `${apnsHost}/3/device/${device_token}`
   const apnsResponse = await fetch(url, {
     method: 'POST',
     headers: {

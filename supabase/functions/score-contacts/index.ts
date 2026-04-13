@@ -382,6 +382,17 @@ Deno.serve(async (_req: Request) => {
           })
           if (pushError) {
             console.error(`Failed to send push for nudge ${nudgeRow.id}:`, pushError)
+          } else {
+            const { error: deliveredError } = await supabase
+              .from('nudges')
+              .update({
+                status: 'delivered',
+                delivered_at: new Date().toISOString(),
+              })
+              .eq('id', nudgeRow.id)
+            if (deliveredError) {
+              console.error(`Failed to mark delivered for nudge ${nudgeRow.id}:`, deliveredError)
+            }
           }
         }
       }

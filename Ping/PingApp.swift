@@ -77,6 +77,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             let nudgeId = UUID(uuidString: nudgeIdString)
         else { return }
 
+        Task {
+            try? await SupabaseService.shared.updateNudgeStatus(id: nudgeId, status: .opened)
+        }
+
         await MainActor.run {
             router.navigateToNudge(nudgeId)
         }
@@ -122,7 +126,7 @@ struct PingApp: App {
     private var rootView: some View {
         if !authViewModel.isAuthenticated {
             WelcomeView(viewModel: authViewModel)
-        } else if !authViewModel.hasToneSamples, let uid = authViewModel.userId {
+        } else if !authViewModel.hasToneSamples, !authViewModel.toneCheckFailed, let uid = authViewModel.userId {
             ToneSetupView(userId: uid, viewModel: authViewModel) {
                 authViewModel.hasToneSamples = true
             }

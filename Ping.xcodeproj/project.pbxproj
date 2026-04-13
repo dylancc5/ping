@@ -541,6 +541,7 @@
 		};
 		8F3F73FD7AC1E53272AB60BC /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = AA11BB22CC33DD44EE55FF66 /* Config.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = PingShareExtension/PingShareExtension.entitlements;
 				INFOPLIST_FILE = PingShareExtension/Info.plist;
@@ -559,6 +560,7 @@
 		};
 		925C61FD0ECB7A62CE05EC40 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = AA11BB22CC33DD44EE55FF66 /* Config.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = PingShareExtension/PingShareExtension.entitlements;
 				INFOPLIST_FILE = PingShareExtension/Info.plist;

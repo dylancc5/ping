@@ -31,6 +31,7 @@ struct ProfileTabView: View {
     @Environment(GoogleIntegrationState.self) private var googleState
 
     @State private var showLinkedInSheet = false
+    @State private var showToneSettingsSheet = false
     @State private var importedCount = UserDefaults.standard.integer(forKey: "linkedinImportCount")
 
     // Google state
@@ -52,6 +53,9 @@ struct ProfileTabView: View {
 
                         googleSection
                         linkedInRow
+
+                        sectionHeader("AI")
+                        aiSettingsRow
                     }
                     .padding(.top, 8)
                 }
@@ -67,6 +71,9 @@ struct ProfileTabView: View {
                         importedCount = total
                     }
                 )
+            }
+            .sheet(isPresented: $showToneSettingsSheet) {
+                ToneSettingsSheet()
             }
             .sheet(isPresented: $showCalendarSuggestions) {
                 CalendarSuggestionsSheet()
@@ -416,6 +423,41 @@ struct ProfileTabView: View {
 
     // MARK: - Helpers
 
+    private var aiSettingsRow: some View {
+        Button {
+            showToneSettingsSheet = true
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "waveform.and.mic")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Color.pingAccent)
+                    .frame(width: 36)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Writing Tone")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Color.pingTextPrimary)
+                    Text("Update how AI drafts should sound")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.pingTextMuted)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Color.pingTextSubtle)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(Color.pingSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 2)
+    }
+
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
             .font(.system(size: 12, weight: .semibold))
@@ -424,6 +466,97 @@ struct ProfileTabView: View {
             .padding(.horizontal, 20)
             .padding(.top, 24)
             .padding(.bottom, 8)
+    }
+}
+
+private struct ToneSettingsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var toneSample = ""
+    @State private var isLoading = true
+    @State private var isSaving = false
+    @State private var errorMessage: String? = nil
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.pingBackground.ignoresSafeArea()
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("How should drafts sound?")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(Color.pingTextPrimary)
+
+                    Text("Paste a few sentences in your voice. Ping uses this to personalize draft style.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.pingTextSecondary)
+
+                    TextEditor(text: $toneSample)
+                        .font(.body)
+                        .foregroundStyle(Color.pingTextPrimary)
+                        .scrollContentBackground(.hidden)
+                        .frame(minHeight: 180)
+                        .padding(12)
+                        .background(Color.pingSurface2)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    PingButton(title: isSaving ? "Saving…" : "Save Tone Sample") {
+                        Task { await save() }
+                    }
+                    .disabled(isSaving || toneSample.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    Spacer()
+                }
+                .padding(20)
+
+                if isLoading {
+                    ProgressView()
+                }
+            }
+            .navigationTitle("Writing Tone")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                        .foregroundStyle(Color.pingAccent)
+                }
+            }
+            .task {
+                await load()
+            }
+            .alert("Tone Settings Error", isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { if !$0 { errorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) { errorMessage = nil }
+            } message: {
+                Text(errorMessage ?? "")
+            }
+        }
+    }
+
+    private func load() async {
+        isLoading = true
+        defer { isLoading = false }
+        guard let userId = await SupabaseService.shared.currentUserId else { return }
+        do {
+            let samples = try await SupabaseService.shared.fetchToneSamples(userId: userId)
+            toneSample = samples.first ?? ""
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func save() async {
+        let trimmed = toneSample.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard let userId = await SupabaseService.shared.currentUserId else { return }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            try await SupabaseService.shared.saveToneSample(trimmed, userId: userId)
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }
 

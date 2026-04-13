@@ -11,6 +11,7 @@ struct MessageDraftView: View {
     @State private var vm = ContactViewModel()
     @State private var draftText: String
     @State private var isRegenerating = false
+    @State private var isGeneratingInitialDraft = false
     @State private var copiedFeedback = false
     @State private var missingInfoAlert: MissingInfoAlert? = nil
     @State private var regenerateError: Bool = false
@@ -45,12 +46,16 @@ struct MessageDraftView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    Button("Done") {
+                        saveDraftIfNeeded()
+                        dismiss()
+                    }
                         .foregroundStyle(Color.pingAccent)
                 }
             }
             .task {
                 await vm.load(contactId: contact.id)
+                await prefillDraftIfNeeded()
             }
             .alert(item: $missingInfoAlert) { alert in
                 Alert(title: Text(alert.title), message: Text(alert.message), dismissButton: .default(Text("OK")))
@@ -188,7 +193,7 @@ struct MessageDraftView: View {
     private var regenerateButton: some View {
         Button(action: regenerate) {
             HStack(spacing: 8) {
-                if isRegenerating {
+                if isRegenerating || isGeneratingInitialDraft {
                     ProgressView()
                         .scaleEffect(0.85)
                         .tint(Color.pingAccent)
@@ -196,18 +201,18 @@ struct MessageDraftView: View {
                     Image(systemName: "arrow.clockwise")
                         .font(.subheadline.weight(.semibold))
                 }
-                Text(isRegenerating ? "Finding a new tone…" : "Try a different tone")
+                Text((isRegenerating || isGeneratingInitialDraft) ? "Finding a new tone…" : "Try a different tone")
                     .font(.subheadline.weight(.semibold))
             }
-            .foregroundStyle(isRegenerating ? Color.pingTextMuted : Color.pingAccent)
+            .foregroundStyle((isRegenerating || isGeneratingInitialDraft) ? Color.pingTextMuted : Color.pingAccent)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
             .background(Color.pingSurface)
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .pingCardShadow()
         }
-        .disabled(isRegenerating)
-        .animation(.easeInOut(duration: 0.15), value: isRegenerating)
+        .disabled(isRegenerating || isGeneratingInitialDraft)
+        .animation(.easeInOut(duration: 0.15), value: isRegenerating || isGeneratingInitialDraft)
     }
 
     // MARK: - Send Actions Row
@@ -326,6 +331,7 @@ struct MessageDraftView: View {
 
     private func copyToClipboard() {
         UIPasteboard.general.string = draftText
+        saveDraftIfNeeded()
         withAnimation { copiedFeedback = true }
         Task {
             try? await Task.sleep(for: .seconds(2))
@@ -348,18 +354,37 @@ struct MessageDraftView: View {
         isRegenerating = true
         Task {
             defer { isRegenerating = false }
-            do {
-                let newDraft = try await GeminiService.generateDraft(
-                    contact: contact,
-                    nudgeReason: nudge.reason ?? "General check-in",
-                    toneSamples: []
-                )
+            if let newDraft = await vm.generateDraft(
+                contact: contact,
+                nudgeReason: nudge.reason ?? "General check-in",
+                forceRefresh: true
+            ) {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     draftText = newDraft
                 }
-            } catch {
+            } else {
                 regenerateError = true
             }
+        }
+    }
+
+    private func prefillDraftIfNeeded() async {
+        guard draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        isGeneratingInitialDraft = true
+        defer { isGeneratingInitialDraft = false }
+        if let generated = await vm.generateDraft(
+            contact: contact,
+            nudgeReason: nudge.reason ?? "General check-in"
+        ) {
+            draftText = generated
+            await vm.saveNudgeDraft(nudge, draft: generated)
+        }
+    }
+
+    private func saveDraftIfNeeded() {
+        guard draftText != (nudge.draftMessage ?? ""), !draftText.isEmpty else { return }
+        Task {
+            await vm.saveNudgeDraft(nudge, draft: draftText)
         }
     }
 }

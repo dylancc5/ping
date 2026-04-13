@@ -55,7 +55,9 @@ struct PingTabView: View {
             .task {
                 await viewModel.load()
                 await NudgeService.shared.requestNotificationPermissionIfNeeded()
-                await scheduleLocalNotificationFallbacks()
+                if isLocalNotificationFallbackEnabled {
+                    await scheduleLocalNotificationFallbacks()
+                }
             }
             .sheet(item: $draftSheet) { item in
                 MessageDraftView(
@@ -85,6 +87,15 @@ struct PingTabView: View {
                 at: nudge.scheduledAt
             )
         }
+    }
+
+    private var isLocalNotificationFallbackEnabled: Bool {
+#if DEBUG
+        let flag = ProcessInfo.processInfo.environment["LOCAL_PUSH_FALLBACK_ENABLED"]?.lowercased()
+        return flag == nil || flag == "1" || flag == "true" || flag == "yes"
+#else
+        return false
+#endif
     }
 
     // MARK: - Sections

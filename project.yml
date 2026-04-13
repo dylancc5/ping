@@ -39,9 +39,11 @@ targets:
           - UIInterfaceOrientationPortrait
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
-        SUPABASE_URL: $(SUPABASE_URL)
+        SUPABASE_HOST: $(SUPABASE_HOST)
         SUPABASE_ANON_KEY: $(SUPABASE_ANON_KEY)
         GOOGLE_CLIENT_ID: $(GOOGLE_CLIENT_ID)
+        NSSpeechRecognitionUsageDescription: Ping converts your speech to text to help you save quick contact notes.
+        NSMicrophoneUsageDescription: Ping uses your microphone so you can quickly capture contact notes by voice.
         CFBundleURLTypes:
           - CFBundleURLName: google-signin
             CFBundleURLSchemes:
@@ -68,6 +70,7 @@ targets:
       properties:
         com.apple.security.application-groups:
           - group.com.v1.ping
+        aps-environment: development
 
   PingShareExtension:
     type: app-extension
@@ -81,7 +84,7 @@ targets:
     info:
       path: PingShareExtension/Info.plist
       properties:
-        SUPABASE_URL: $(SUPABASE_URL)
+        SUPABASE_HOST: $(SUPABASE_HOST)
         SUPABASE_ANON_KEY: $(SUPABASE_ANON_KEY)
     settings:
       base:

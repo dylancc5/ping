@@ -8,6 +8,7 @@ final class AuthViewModel: NSObject, ObservableObject {
     @Published var isAuthenticated: Bool = false
     @Published var userId: UUID? = nil
     @Published var hasToneSamples: Bool = false
+    @Published var toneCheckFailed: Bool = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
 
@@ -31,6 +32,7 @@ final class AuthViewModel: NSObject, ObservableObject {
                     userId = nil
                     isAuthenticated = false
                     hasToneSamples = false
+                    toneCheckFailed = false
                 default:
                     break
                 }
@@ -104,8 +106,10 @@ final class AuthViewModel: NSObject, ObservableObject {
     func checkToneSamples(userId: UUID) async {
         do {
             hasToneSamples = try await SupabaseService.shared.hasToneSamples(userId: userId)
+            toneCheckFailed = false
         } catch {
             hasToneSamples = false
+            toneCheckFailed = true
         }
     }
 

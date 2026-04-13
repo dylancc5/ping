@@ -20,6 +20,7 @@ final class NetworkViewModel {
     func loadContacts() async {
         guard let userId = await service.currentUserId else { return }
         isLoading = true
+        error = nil
         defer { isLoading = false }
         do {
             contacts = try await service.fetchContacts(userId: userId)
@@ -32,6 +33,7 @@ final class NetworkViewModel {
         guard draft.isValid else { return }
         guard let userId = await service.currentUserId else { return }
         let payload = ContactInsertPayload(draft: draft, userId: userId)
+        error = nil
         do {
             let created = try await service.createContact(payload: payload)
             contacts.insert(created, at: 0)
@@ -47,6 +49,7 @@ final class NetworkViewModel {
     }
 
     func updateContact(id: UUID, fields: [String: AnyJSON]) async {
+        error = nil
         do {
             try await service.updateContact(id: id, fields: fields)
             // Reload the single contact to reflect server-side changes (e.g. updated_at).
@@ -60,6 +63,7 @@ final class NetworkViewModel {
     }
 
     func deleteContact(_ contact: Contact) async {
+        error = nil
         do {
             try await service.deleteContact(id: contact.id)
             contacts.removeAll { $0.id == contact.id }

@@ -6,17 +6,15 @@ struct NetworkTabView: View {
     @Environment(GoogleIntegrationState.self) private var googleState
 
     @State private var searchText = ""
-    @State private var isGridView = false
+    @AppStorage("network.isGridView") private var isGridView = false
     @State private var showQuickCapture = false
     @State private var showCalendarSuggestions = false
 
     @State private var viewModel = NetworkViewModel()
-
-    // In Phase 2 this will come from a ViewModel / environment
-    private let contacts: [Contact] = Contact.previewSamples
+    @State private var hasLoadedOnce = false
 
     private var filtered: [Contact] {
-        let sorted = contacts.sorted {
+        let sorted = viewModel.sortedContacts.sorted {
             ($0.lastContactedAt ?? .distantPast) > ($1.lastContactedAt ?? .distantPast)
         }
         guard !searchText.isEmpty else { return sorted }
@@ -38,7 +36,11 @@ struct NetworkTabView: View {
                         calendarBanner
                     }
 
-                    if filtered.isEmpty {
+                    if viewModel.isLoading && viewModel.contacts.isEmpty {
+                        loadingState
+                    } else if let error = viewModel.error, viewModel.contacts.isEmpty {
+                        errorState(error: error)
+                    } else if filtered.isEmpty {
                         emptyState
                     } else if isGridView {
                         gridContent
@@ -68,6 +70,11 @@ struct NetworkTabView: View {
             .sheet(isPresented: $showCalendarSuggestions) {
                 CalendarSuggestionsSheet()
                     .environment(googleState)
+            }
+            .task {
+                guard !hasLoadedOnce else { return }
+                hasLoadedOnce = true
+                await viewModel.loadContacts()
             }
         }
         .enableInjection()
@@ -112,7 +119,7 @@ struct NetworkTabView: View {
             }
         }
         .listStyle(.plain)
-        .refreshable { }
+        .refreshable { await viewModel.loadContacts() }
     }
 
     private var gridContent: some View {
@@ -120,7 +127,7 @@ struct NetworkTabView: View {
             ContactCardGridView(contacts: filtered)
                 .padding(.top, 8)
         }
-        .refreshable { }
+        .refreshable { await viewModel.loadContacts() }
     }
 
     private var emptyState: some View {
@@ -140,6 +147,41 @@ struct NetworkTabView: View {
             .frame(maxWidth: 200)
         }
         .padding(.horizontal, 40)
+    }
+
+    private var loadingState: some View {
+        VStack(spacing: 12) {
+            Spacer()
+            ProgressView()
+            Text("Loading your contacts…")
+                .font(.subheadline)
+                .foregroundStyle(Color.pingTextMuted)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func errorState(error: Error) -> some View {
+        VStack(spacing: 12) {
+            Spacer()
+            Image(systemName: "wifi.exclamationmark")
+                .font(.system(size: 28))
+                .foregroundStyle(Color.pingDestructive)
+            Text("Couldn't load your network")
+                .font(.headline)
+                .foregroundStyle(Color.pingTextPrimary)
+            Text(error.localizedDescription)
+                .font(.subheadline)
+                .foregroundStyle(Color.pingTextMuted)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 20)
+            PingButton(title: "Try Again") {
+                Task { await viewModel.loadContacts() }
+            }
+            .frame(maxWidth: 180)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var fab: some View {

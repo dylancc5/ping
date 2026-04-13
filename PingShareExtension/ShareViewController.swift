@@ -182,13 +182,23 @@ class ShareViewController: UIViewController {
     // MARK: - Supabase Client
 
     /// Creates a Supabase client using keys from the extension's Info.plist.
-    /// Returns nil if the URL is missing or malformed (e.g., build config not propagated).
+    /// Returns nil if required values are missing or malformed.
     /// Auth session is restored separately via shared App Group UserDefaults.
     private func makeSupabaseClient() -> SupabaseClient? {
         let info = Bundle.main.infoDictionary ?? [:]
-        let urlString = info["SUPABASE_URL"] as? String ?? ""
+        let host = info["SUPABASE_HOST"] as? String ?? ""
         let key = info["SUPABASE_ANON_KEY"] as? String ?? ""
-        guard let url = URL(string: urlString), !urlString.isEmpty, !key.isEmpty else { return nil }
+        guard !host.isEmpty, !key.isEmpty else {
+            assertionFailure("Missing SUPABASE_HOST/SUPABASE_ANON_KEY in Share Extension Info.plist. Ensure target uses Config.xcconfig.")
+            return nil
+        }
+
+        let urlString = "https://\(host)"
+        guard let url = URL(string: urlString) else {
+            assertionFailure("Invalid SUPABASE_HOST '\(host)' for Share Extension.")
+            return nil
+        }
+
         return SupabaseClient(supabaseURL: url, supabaseKey: key)
     }
 

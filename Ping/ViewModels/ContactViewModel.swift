@@ -35,17 +35,8 @@ final class ContactViewModel {
             self.error = error
             return
         }
-        Task {
-            guard let c = contact, let userId = await service.currentUserId else { return }
-            let toneSamples = (try? await service.fetchToneSamples(userId: userId)) ?? []
-            if let draft = try? await GeminiService.generateDraft(
-                contact: c,
-                nudgeReason: nudges.first?.reason ?? "General check-in",
-                toneSamples: toneSamples
-            ) {
-                cachedDraft = draft
-                if messageDraft.isEmpty { messageDraft = draft }
-            }
+        if let c = contact {
+            _ = await generateDraft(contact: c, nudgeReason: nudges.first?.reason ?? "General check-in")
         }
     }
 
@@ -99,6 +90,32 @@ final class ContactViewModel {
             }
         } catch {
             self.error = error
+        }
+    }
+
+    // MARK: - Draft Generation
+
+    @discardableResult
+    func generateDraft(contact: Contact, nudgeReason: String, forceRefresh: Bool = false) async -> String? {
+        if !forceRefresh, let cachedDraft, !cachedDraft.isEmpty {
+            if messageDraft.isEmpty { messageDraft = cachedDraft }
+            return cachedDraft
+        }
+
+        guard let userId = await service.currentUserId else { return nil }
+        let toneSamples = (try? await service.fetchToneSamples(userId: userId)) ?? []
+        do {
+            let draft = try await GeminiService.generateDraft(
+                contact: contact,
+                nudgeReason: nudgeReason,
+                toneSamples: toneSamples
+            )
+            cachedDraft = draft
+            if messageDraft.isEmpty || forceRefresh { messageDraft = draft }
+            return draft
+        } catch {
+            self.error = error
+            return nil
         }
     }
 }

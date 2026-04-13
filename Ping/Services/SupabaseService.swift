@@ -365,10 +365,10 @@ actor SupabaseService {
     }
 
     private struct ToneSampleUpsert: Encodable {
-        let userId: UUID
+        let id: UUID
         let toneSamples: [String]
         enum CodingKeys: String, CodingKey {
-            case userId = "user_id"
+            case id
             case toneSamples = "tone_samples"
         }
     }
@@ -377,7 +377,7 @@ actor SupabaseService {
         let row: ProfileRow = try await client
             .from("profiles")
             .select("tone_samples")
-            .eq("user_id", value: userId)
+            .eq("id", value: userId)
             .single()
             .execute()
             .value
@@ -388,7 +388,7 @@ actor SupabaseService {
         let row: ProfileRow = try await client
             .from("profiles")
             .select("tone_samples")
-            .eq("user_id", value: userId)
+            .eq("id", value: userId)
             .single()
             .execute()
             .value
@@ -396,10 +396,10 @@ actor SupabaseService {
     }
 
     func saveToneSample(_ text: String, userId: UUID) async throws {
-        let payload = ToneSampleUpsert(userId: userId, toneSamples: [text])
+        let payload = ToneSampleUpsert(id: userId, toneSamples: [text])
         try await client
             .from("profiles")
-            .upsert(payload, onConflict: "user_id")
+            .upsert(payload, onConflict: "id")
             .execute()
     }
 
