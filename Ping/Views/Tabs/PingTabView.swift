@@ -97,11 +97,11 @@ struct PingTabView: View {
                         nudge: nudge,
                         contact: contact,
                         onDismiss: {
-                            NudgeService.shared.cancelLocalNotification(nudgeId: nudge.id)
+                            await NudgeService.shared.cancelLocalNotification(nudgeId: nudge.id)
                             await viewModel.dismissNudge(nudge)
                         },
                         onSnooze: { date in
-                            NudgeService.shared.cancelLocalNotification(nudgeId: nudge.id)
+                            await NudgeService.shared.cancelLocalNotification(nudgeId: nudge.id)
                             await viewModel.snoozeNudge(nudge, until: date)
                         },
                         onTap: {
@@ -142,9 +142,7 @@ struct PingTabView: View {
         VStack(spacing: 12) {
             sectionHeader("TODAY")
             ForEach(0..<2, id: \.self) { _ in
-                LoadingShimmer()
-                    .frame(height: 140)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                ShimmerBox(height: 140, cornerRadius: 14)
                     .padding(.horizontal, 20)
             }
         }

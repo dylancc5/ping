@@ -232,15 +232,15 @@ private struct AddGoalSheet: View {
                     .lineLimit(4...8)
                     .focused($focused)
 
-                Text("e.g. "Applying to Stripe for product roles" or "Fundraising for my seed round"")
+                Text("e.g. \"Applying to Stripe for product roles\" or \"Fundraising for my seed round\"")
                     .font(.caption)
                     .foregroundStyle(Color.pingTextMuted)
 
                 Spacer()
 
-                PingButton(title: "Save Goal", style: .primary) {
+                PingButton(title: "Save Goal", action: {
                     Task { await saveGoal() }
-                }
+                }, style: .primary)
                 .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .padding(24)
@@ -266,7 +266,7 @@ private struct AddGoalSheet: View {
         // Grab the newly inserted goal (addGoal inserts at index 0)
         if let newGoal = viewModel.goals.first {
             Task {
-                guard let embedding = try? await GeminiService.shared.embed(trimmed, taskType: .retrievalDocument) else { return }
+                guard let embedding = try? await GeminiService.embed(trimmed, taskType: .retrievalDocument) else { return }
                 try? await SupabaseService.shared.updateGoalEmbedding(id: newGoal.id, embeddingString: embedding.pgVectorLiteral)
                 await viewModel.loadGoals()
             }

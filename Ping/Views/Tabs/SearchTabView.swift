@@ -37,7 +37,7 @@ struct SearchTabView: View {
     }
 
     private func triggerSearch(query: String) async {
-        guard let embedding = try? await GeminiService.shared.embed(query, taskType: .retrievalQuery) else { return }
+        guard let embedding = try? await GeminiService.embed(query, taskType: .retrievalQuery) else { return }
         await vm.searchContacts(embeddedQuery: embedding)
     }
 }

@@ -13,6 +13,7 @@ struct MessageDraftView: View {
     @State private var isRegenerating = false
     @State private var copiedFeedback = false
     @State private var missingInfoAlert: MissingInfoAlert? = nil
+    @State private var regenerateError: Bool = false
     @FocusState private var editorFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
@@ -53,6 +54,11 @@ struct MessageDraftView: View {
             }
             .alert(item: $missingInfoAlert) { alert in
                 Alert(title: Text(alert.title), message: Text(alert.message), dismissButton: .default(Text("OK")))
+            }
+            .alert("Couldn't Regenerate", isPresented: $regenerateError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Failed to generate a new draft. Check your API key or try again.")
             }
         }
         .enableInjection()
@@ -342,11 +348,17 @@ struct MessageDraftView: View {
         isRegenerating = true
         Task {
             defer { isRegenerating = false }
-            let newDraft = try? await GeminiService.shared.generateDraft(for: contact, temperature: 0.9)
-            if let newDraft {
+            do {
+                let newDraft = try await GeminiService.generateDraft(
+                    contact: contact,
+                    nudgeReason: nudge.reason ?? "General check-in",
+                    toneSamples: []
+                )
                 withAnimation(.easeInOut(duration: 0.3)) {
                     draftText = newDraft
                 }
+            } catch {
+                regenerateError = true
             }
         }
     }
@@ -363,6 +375,7 @@ private struct MissingInfoAlert: Identifiable {
 // MARK: - Preview
 
 #Preview {
+    @Previewable @State var vm = PingViewModel()
     let nudge = Nudge(
         id: UUID(), contactId: Contact.preview.id, userId: UUID(),
         status: .pending,
@@ -372,6 +385,5 @@ private struct MissingInfoAlert: Identifiable {
         createdAt: Date()
     )
 
-    @State var vm = PingViewModel()
     return MessageDraftView(nudge: nudge, contact: .preview, pingViewModel: vm)
 }

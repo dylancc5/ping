@@ -123,6 +123,7 @@
 		F7417C62E36DF9E08CD56C4F /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		F7DD9D4337004D4575FF0FC3 /* PingApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PingApp.swift; sourceTree = "<group>"; };
 		FE684ABBD395E8EB8520ED06 /* View+Ping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+Ping.swift"; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF66 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Config.xcconfig; path = Config.xcconfig; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -496,6 +497,7 @@
 /* Begin XCBuildConfiguration section */
 		2BC2E3A501E28EC9050517AB /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = AA11BB22CC33DD44EE55FF66 /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Ping/Ping.entitlements;
@@ -517,6 +519,7 @@
 		};
 		73785A7C176C262B2627931B /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = AA11BB22CC33DD44EE55FF66 /* Config.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Ping/Ping.entitlements;

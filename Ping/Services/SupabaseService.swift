@@ -69,7 +69,12 @@ actor SupabaseService {
     private init() {
         client = SupabaseClient(
             supabaseURL: URL(string: Config.supabaseURL)!,
-            supabaseKey: Config.supabaseAnonKey
+            supabaseKey: Config.supabaseAnonKey,
+            options: SupabaseClientOptions(
+                auth: SupabaseClientOptions.AuthOptions(
+                    emitLocalSessionAsInitialSession: true
+                )
+            )
         )
     }
 
@@ -91,9 +96,9 @@ actor SupabaseService {
         persistSessionForExtension()
     }
 
-    func signInWithGoogle(idToken: String, accessToken: String) async throws {
+    func signInWithGoogle(idToken: String, accessToken: String, nonce: String?) async throws {
         try await client.auth.signInWithIdToken(
-            credentials: .init(provider: .google, idToken: idToken, accessToken: accessToken)
+            credentials: .init(provider: .google, idToken: idToken, accessToken: accessToken, nonce: nonce)
         )
         persistSessionForExtension()
     }
@@ -101,7 +106,7 @@ actor SupabaseService {
     var authStateChanges: AsyncStream<(AuthChangeEvent, Session?)> {
         AsyncStream { continuation in
             Task {
-                for await (event, session) in await client.auth.authStateChanges {
+                for await (event, session) in client.auth.authStateChanges {
                     continuation.yield((event, session))
                 }
                 continuation.finish()
@@ -377,6 +382,17 @@ actor SupabaseService {
             .execute()
             .value
         return !(row.toneSamples ?? []).isEmpty
+    }
+
+    func fetchToneSamples(userId: UUID) async throws -> [String] {
+        let row: ProfileRow = try await client
+            .from("profiles")
+            .select("tone_samples")
+            .eq("user_id", value: userId)
+            .single()
+            .execute()
+            .value
+        return row.toneSamples ?? []
     }
 
     func saveToneSample(_ text: String, userId: UUID) async throws {

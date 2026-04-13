@@ -54,7 +54,9 @@ class SpeechService {
                 }
             }
             continuation.onTermination = { [weak self] _ in
-                self?.stopRecording()
+                Task { @MainActor [weak self] in
+                    self?.stopRecording()
+                }
             }
         }
     }

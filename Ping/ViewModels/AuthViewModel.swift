@@ -20,6 +20,7 @@ final class AuthViewModel: NSObject, ObservableObject {
             for await (event, session) in await SupabaseService.shared.authStateChanges {
                 switch event {
                 case .signedIn:
+                    if session?.isExpired == true { break }
                     let uid = session?.user.id
                     userId = uid
                     isAuthenticated = true
@@ -63,7 +64,7 @@ final class AuthViewModel: NSObject, ObservableObject {
             // Ignore user-cancelled errors
             let nsError = error as NSError
             if nsError.code != ASAuthorizationError.canceled.rawValue {
-                errorMessage = error.localizedDescription
+                errorMessage = Self.userFacingAuthError(error)
             }
         }
     }
@@ -75,15 +76,27 @@ final class AuthViewModel: NSObject, ObservableObject {
         defer { isLoading = false }
         do {
             let user = try await GoogleAuthService.signIn(presenting: viewController)
-            async let idTokenFetch = GoogleAuthService.getIDToken(user: user)
+            async let idTokenInfoFetch = GoogleAuthService.getIDTokenInfo(user: user)
             async let accessTokenFetch = GoogleAuthService.getAccessToken(user: user)
-            let (idToken, accessToken) = try await (idTokenFetch, accessTokenFetch)
+            let (idTokenInfo, accessToken) = try await (idTokenInfoFetch, accessTokenFetch)
             // Persist for Profile tab integrations (contacts, calendar, gmail)
             GoogleIntegrationState.shared.googleUser = user
-            try await SupabaseService.shared.signInWithGoogle(idToken: idToken, accessToken: accessToken)
+            try await SupabaseService.shared.signInWithGoogle(
+                idToken: idTokenInfo.token,
+                accessToken: accessToken,
+                nonce: idTokenInfo.nonce
+            )
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = Self.userFacingAuthError(error)
         }
+    }
+
+    private static func userFacingAuthError(_ error: Error) -> String {
+        let text = error.localizedDescription
+        if text.localizedCaseInsensitiveContains("invalid api key") {
+            return "Supabase rejected the API key. In the dashboard open Settings → API, copy the Project URL host and anon public key into Config.xcconfig, then Product → Clean Build Folder and run again."
+        }
+        return text
     }
 
     // MARK: - Tone Samples
@@ -141,9 +154,13 @@ extension AuthViewModel: ASAuthorizationControllerPresentationContextProviding {
     nonisolated func presentationAnchor(
         for controller: ASAuthorizationController
     ) -> ASPresentationAnchor {
-        UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .first?.windows
-            .first(where: \.isKeyWindow) ?? UIWindow()
+        MainActor.assumeIsolated {
+            let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            for scene in scenes {
+                if let key = scene.windows.first(where: \.isKeyWindow) { return key }
+            }
+            if let first = scenes.first?.windows.first { return first }
+            return UIWindow()
+        }
     }
 }

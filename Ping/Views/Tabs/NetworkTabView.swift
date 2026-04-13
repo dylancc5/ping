@@ -10,6 +10,8 @@ struct NetworkTabView: View {
     @State private var showQuickCapture = false
     @State private var showCalendarSuggestions = false
 
+    @State private var viewModel = NetworkViewModel()
+
     // In Phase 2 this will come from a ViewModel / environment
     private let contacts: [Contact] = Contact.previewSamples
 
@@ -61,7 +63,7 @@ struct NetworkTabView: View {
             }
             .searchable(text: $searchText, prompt: "Search by name or company...")
             .sheet(isPresented: $showQuickCapture) {
-                QuickCaptureView()
+                QuickCaptureView(viewModel: viewModel)
             }
             .sheet(isPresented: $showCalendarSuggestions) {
                 CalendarSuggestionsSheet()
@@ -132,9 +134,9 @@ struct NetworkTabView: View {
             Text("Log your first contact.")
                 .font(.subheadline)
                 .foregroundStyle(Color.pingTextSecondary)
-            PingButton(title: "Add Contact", style: .primary) {
+            PingButton(title: "Add Contact", action: {
                 showQuickCapture = true
-            }
+            }, style: .primary)
             .frame(maxWidth: 200)
         }
         .padding(.horizontal, 40)

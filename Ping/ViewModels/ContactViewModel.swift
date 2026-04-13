@@ -36,12 +36,13 @@ final class ContactViewModel {
             return
         }
         Task {
-            if let c = contact,
-               let draft = try? await GeminiService.generateDraft(
-                   contact: c,
-                   nudgeReason: nudges.first?.reason ?? "General check-in",
-                   toneSamples: []  // Phase 3: load from profiles table
-               ) {
+            guard let c = contact, let userId = await service.currentUserId else { return }
+            let toneSamples = (try? await service.fetchToneSamples(userId: userId)) ?? []
+            if let draft = try? await GeminiService.generateDraft(
+                contact: c,
+                nudgeReason: nudges.first?.reason ?? "General check-in",
+                toneSamples: toneSamples
+            ) {
                 cachedDraft = draft
                 if messageDraft.isEmpty { messageDraft = draft }
             }
@@ -64,6 +65,14 @@ final class ContactViewModel {
         do {
             let saved = try await service.createInteraction(interaction)
             interactions.insert(saved, at: 0)
+            // Reset warmth score so this contact doesn't continue to decay into obscurity
+            let now = ISO8601DateFormatter().string(from: Date())
+            try await service.updateContact(id: contact.id, fields: [
+                "warmth_score": .double(1.0),
+                "last_contacted_at": .string(now)
+            ])
+            self.contact?.warmthScore = 1.0
+            self.contact?.lastContactedAt = Date()
         } catch {
             self.error = error
         }

@@ -39,7 +39,7 @@ struct SemanticSearchView: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 40))
                 .foregroundStyle(Color.pingTextMuted)
-            Text("No results for "\(viewModel.query)"")
+            Text("No results for \"\(viewModel.query)\"")
                 .font(.headline)
                 .foregroundStyle(Color.pingTextPrimary)
             Text("Try adding them as a new contact.")

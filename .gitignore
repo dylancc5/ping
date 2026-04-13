@@ -13,7 +13,6 @@ Packages/
 # Config (NEVER commit real values)
 Config.xcconfig
 GoogleService-Info.plist
-*.xcconfig
 
 # Supabase
 .env

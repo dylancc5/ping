@@ -5,9 +5,11 @@ struct ContactDetailView: View {
     @ObserveInjection var inject
     let contact: Contact
     var interactions: [Interaction] = []
+    var nudge: Nudge? = nil
 
     @State private var isDraftLoading = true
     @State private var showMessageDraft = false
+    @State private var pingViewModel = PingViewModel()
 
     var body: some View {
         ScrollView {
@@ -38,7 +40,9 @@ struct ContactDetailView: View {
             }
         }
         .sheet(isPresented: $showMessageDraft) {
-            MessageDraftView()
+            if let nudge {
+                MessageDraftView(nudge: nudge, contact: contact, pingViewModel: pingViewModel)
+            }
         }
         .onAppear {
             Task {
@@ -124,9 +128,9 @@ struct ContactDetailView: View {
                     .foregroundStyle(Color.pingTextPrimary)
             }
 
-            PingButton(title: "Edit & Send →", style: .primary) {
+            PingButton(title: "Edit & Send →", action: {
                 showMessageDraft = true
-            }
+            }, style: .primary)
 
             Button {
                 isDraftLoading = true
