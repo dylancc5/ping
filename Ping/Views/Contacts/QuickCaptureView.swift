@@ -1,5 +1,7 @@
 import SwiftUI
 import Inject
+import Speech
+import AVFoundation
 
 struct QuickCaptureView: View {
     @ObserveInjection var inject
@@ -13,6 +15,9 @@ struct QuickCaptureView: View {
     @State private var recordingTask: Task<Void, Never>?
 
     @State private var micScale: CGFloat = 1.0
+    @State private var showMicPermissionAlert = false
+    @State private var showExtractionFailedBanner = false
+    @State private var showAISuccessBanner = false
 
     private var canSave: Bool {
         !draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -34,6 +39,35 @@ struct QuickCaptureView: View {
                     fields
                     micButton
                     if !transcript.isEmpty { transcriptPreview }
+                    if showAISuccessBanner {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                                .font(.caption)
+                                .foregroundStyle(Color.pingSuccess)
+                            Text("AI extracted contact details")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(Color.pingSuccess)
+                            Spacer()
+                        }
+                        .padding(12)
+                        .background(Color.pingSuccess.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                    if showExtractionFailedBanner {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Label("Couldn't extract automatically — transcript added to Notes",
+                                  systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption)
+                                .foregroundStyle(Color.pingWarmthCool)
+                            Text("Fill in Name and Where You Met above.")
+                                .font(.caption2)
+                                .foregroundStyle(Color.pingTextMuted)
+                        }
+                        .padding(12)
+                        .background(Color.pingSurface2)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
                     saveButton
                 }
                 .padding(.horizontal, 20)
@@ -41,6 +75,16 @@ struct QuickCaptureView: View {
             }
         }
         .background(Color.pingSurface.ignoresSafeArea())
+        .alert("Microphone Access Required", isPresented: $showMicPermissionAlert) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Enable microphone access in Settings → Ping to use voice capture.")
+        }
         .enableInjection()
     }
 
@@ -170,6 +214,27 @@ struct QuickCaptureView: View {
     // MARK: - Actions
 
     private func startRecording() {
+        let speechStatus = SFSpeechRecognizer.authorizationStatus()
+        let micStatus = AVAudioApplication.shared.recordPermission
+
+        // Request permissions first if not yet determined
+        if speechStatus == .notDetermined || micStatus == .undetermined {
+            Task {
+                await withCheckedContinuation { cont in
+                    SFSpeechRecognizer.requestAuthorization { _ in cont.resume() }
+                }
+                await AVAudioApplication.requestRecordPermission()
+                startRecording()
+            }
+            return
+        }
+
+        guard SFSpeechRecognizer.authorizationStatus() == .authorized,
+              AVAudioApplication.shared.recordPermission == .granted else {
+            showMicPermissionAlert = true
+            return
+        }
+
         isRecording = true
         withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
             micScale = 1.12
@@ -202,11 +267,21 @@ struct QuickCaptureView: View {
         guard !transcript.isEmpty else { return }
         Task {
             if let extracted = try? await GeminiService.extractContactFromTranscript(transcript) {
-                if draft.name.isEmpty   { draft.name    = extracted.name }
-                if draft.howMet.isEmpty { draft.howMet  = extracted.howMet }
-                if draft.company == nil { draft.company = extracted.company }
-                if draft.title == nil   { draft.title   = extracted.title }
-                if draft.notes == nil   { draft.notes   = extracted.notes }
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    if draft.name.isEmpty   { draft.name    = extracted.name }
+                    if draft.howMet.isEmpty { draft.howMet  = extracted.howMet }
+                    if draft.company == nil { draft.company = extracted.company }
+                    if draft.title == nil   { draft.title   = extracted.title }
+                    if draft.notes == nil   { draft.notes   = extracted.notes }
+                    showAISuccessBanner = true
+                }
+                HapticEngine.success()
+            } else {
+                // Extraction failed — preserve raw transcript in Notes so no info is lost.
+                if draft.notes == nil || (draft.notes ?? "").isEmpty {
+                    draft.notes = transcript
+                }
+                showExtractionFailedBanner = true
             }
         }
     }

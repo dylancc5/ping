@@ -10,7 +10,10 @@ struct ContactCardGridView: View {
     var body: some View {
         LazyVGrid(columns: columns, spacing: 12) {
             ForEach(contacts) { contact in
-                ContactCard(contact: contact)
+                NavigationLink(destination: ContactDetailView(contact: contact)) {
+                    ContactCard(contact: contact)
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 16)

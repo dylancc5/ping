@@ -86,6 +86,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         }
     }
 
+    // BACKEND ACTION REQUIRED: The APNs push payload body should be:
+    //   nudge.draft_message ?? nudge.reason ?? "Time to reconnect"
+    // Currently the Edge Function only sends nudge.reason, which weakens click-through.
+    // Update the push Edge Function to prefer draft_message when available.
+
     /// Called when a notification is about to be presented while the app is in the foreground.
     /// Also marks the nudge as delivered in Supabase.
     func userNotificationCenter(
@@ -118,20 +123,33 @@ struct PingApp: App {
         WindowGroup {
             rootView
                 .task { authViewModel.listenToAuthState() }
+                .task { await restoreGoogleSession() }
                 .onOpenURL { GIDSignIn.sharedInstance.handle($0) }
+        }
+    }
+
+    /// Restores the previous Google sign-in from Keychain so Profile tab
+    /// integrations (Contacts, Calendar, Gmail) work after a cold relaunch.
+    private func restoreGoogleSession() async {
+        if let user = try? await GIDSignIn.sharedInstance.restorePreviousSignIn() {
+            GoogleIntegrationState.shared.googleUser = user
         }
     }
 
     @ViewBuilder
     private var rootView: some View {
-        if !authViewModel.isAuthenticated {
+        if authViewModel.isRestoringSession {
+            // Valid local session found but stream hasn't fired yet — show
+            // a blank background to avoid flashing WelcomeView on cold launch.
+            Color.pingBackground.ignoresSafeArea()
+        } else if !authViewModel.isAuthenticated {
             WelcomeView(viewModel: authViewModel)
         } else if !authViewModel.hasToneSamples, !authViewModel.toneCheckFailed, let uid = authViewModel.userId {
             ToneSetupView(userId: uid, viewModel: authViewModel) {
                 authViewModel.hasToneSamples = true
             }
         } else {
-            ContentView(router: appDelegate.router)
+            ContentView(router: appDelegate.router, authViewModel: authViewModel)
                 .sheet(isPresented: Binding(
                     get: { KeychainHelper.get("GEMINI_API_KEY") == nil && !hasPromptedGeminiKey },
                     set: { if !$0 { hasPromptedGeminiKey = true } }

@@ -43,7 +43,7 @@ final class ContactViewModel {
     // MARK: - Interactions
 
     func logInteraction(type: InteractionType, notes: String? = nil) async {
-        guard let contact, let userId = await service.currentUserId else { return }
+        guard let contact, let userId = service.currentUserId else { return }
         let interaction = Interaction(
             id: UUID(),
             contactId: contact.id,
@@ -96,19 +96,20 @@ final class ContactViewModel {
     // MARK: - Draft Generation
 
     @discardableResult
-    func generateDraft(contact: Contact, nudgeReason: String, forceRefresh: Bool = false) async -> String? {
-        if !forceRefresh, let cachedDraft, !cachedDraft.isEmpty {
+    func generateDraft(contact: Contact, nudgeReason: String, forceRefresh: Bool = false, tone: DraftTone? = nil) async -> String? {
+        if !forceRefresh, tone == nil, let cachedDraft, !cachedDraft.isEmpty {
             if messageDraft.isEmpty { messageDraft = cachedDraft }
             return cachedDraft
         }
 
-        guard let userId = await service.currentUserId else { return nil }
+        guard let userId = service.currentUserId else { return nil }
         let toneSamples = (try? await service.fetchToneSamples(userId: userId)) ?? []
         do {
             let draft = try await GeminiService.generateDraft(
                 contact: contact,
                 nudgeReason: nudgeReason,
-                toneSamples: toneSamples
+                toneSamples: toneSamples,
+                tone: tone
             )
             cachedDraft = draft
             if messageDraft.isEmpty || forceRefresh { messageDraft = draft }

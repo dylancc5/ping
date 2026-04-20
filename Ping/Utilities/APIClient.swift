@@ -8,6 +8,13 @@ enum GeminiError: Error {
 }
 
 struct APIClient {
+    private static let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 15
+        config.timeoutIntervalForResource = 30
+        return URLSession(configuration: config)
+    }()
+
     /// POST JSON body to a URL with an API key query parameter.
     /// Retries once on HTTP 429 after a 2-second delay.
     static func post<T: Encodable, R: Decodable>(
@@ -32,7 +39,7 @@ struct APIClient {
     }
 
     private static func execute<R: Decodable>(request: URLRequest, isRetry: Bool) async throws -> R {
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw GeminiError.httpError(statusCode: 0, body: "Non-HTTP response")
         }

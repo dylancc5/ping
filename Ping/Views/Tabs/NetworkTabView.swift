@@ -5,26 +5,12 @@ struct NetworkTabView: View {
     @ObserveInjection var inject
     @Environment(GoogleIntegrationState.self) private var googleState
 
-    @State private var searchText = ""
     @AppStorage("network.isGridView") private var isGridView = false
     @State private var showQuickCapture = false
     @State private var showCalendarSuggestions = false
 
     @State private var viewModel = NetworkViewModel()
     @State private var hasLoadedOnce = false
-
-    private var filtered: [Contact] {
-        let sorted = viewModel.sortedContacts.sorted {
-            ($0.lastContactedAt ?? .distantPast) > ($1.lastContactedAt ?? .distantPast)
-        }
-        guard !searchText.isEmpty else { return sorted }
-        let q = searchText.lowercased()
-        return sorted.filter {
-            $0.name.lowercased().contains(q) ||
-            ($0.company?.lowercased().contains(q) ?? false) ||
-            ($0.title?.lowercased().contains(q) ?? false)
-        }
-    }
 
     var body: some View {
         NavigationStack {
@@ -40,8 +26,13 @@ struct NetworkTabView: View {
                         loadingState
                     } else if let error = viewModel.error, viewModel.contacts.isEmpty {
                         errorState(error: error)
-                    } else if filtered.isEmpty {
-                        emptyState
+                    } else if viewModel.filteredContacts.isEmpty {
+                        ScrollView {
+                            emptyState
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 80)
+                        }
+                        .refreshable { await viewModel.loadContacts() }
                     } else if isGridView {
                         gridContent
                     } else {
@@ -55,15 +46,34 @@ struct NetworkTabView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        isGridView.toggle()
-                    } label: {
-                        Image(systemName: isGridView ? "list.bullet" : "square.grid.2x2")
-                            .foregroundStyle(Color.pingTextPrimary)
+                    HStack(spacing: 12) {
+                        Menu {
+                            ForEach(ContactSortOrder.allCases, id: \.self) { order in
+                                Button {
+                                    viewModel.sortOrder = order
+                                } label: {
+                                    if viewModel.sortOrder == order {
+                                        Label(order.rawValue, systemImage: "checkmark")
+                                    } else {
+                                        Text(order.rawValue)
+                                    }
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "arrow.up.arrow.down")
+                                .foregroundStyle(Color.pingTextPrimary)
+                        }
+
+                        Button {
+                            isGridView.toggle()
+                        } label: {
+                            Image(systemName: isGridView ? "list.bullet" : "square.grid.2x2")
+                                .foregroundStyle(Color.pingTextPrimary)
+                        }
                     }
                 }
             }
-            .searchable(text: $searchText, prompt: "Search by name or company...")
+            .searchable(text: $viewModel.searchText, prompt: "Search by name, company, notes…")
             .sheet(isPresented: $showQuickCapture) {
                 QuickCaptureView(viewModel: viewModel)
             }
@@ -73,8 +83,19 @@ struct NetworkTabView: View {
             }
             .task {
                 guard !hasLoadedOnce else { return }
-                hasLoadedOnce = true
                 await viewModel.loadContacts()
+                if viewModel.error == nil {
+                    hasLoadedOnce = true
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .contactsDidImport)) { _ in
+                Task { await viewModel.loadContacts() }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .showQuickCapture)) { _ in
+                showQuickCapture = true
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                Task { await viewModel.loadContacts() }
             }
         }
         .enableInjection()
@@ -99,7 +120,7 @@ struct NetworkTabView: View {
 
                 Image(systemName: "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.pingTextSubtle)
+                    .foregroundStyle(Color.pingTextSecondary)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -110,12 +131,23 @@ struct NetworkTabView: View {
 
     private var listContent: some View {
         List {
-            ForEach(filtered) { contact in
-                NavigationLink(destination: ContactDetailView(contact: contact)) {
+            ForEach(viewModel.filteredContacts) { contact in
+                NavigationLink(destination: ContactDetailView(contact: contact, onContactUpdated: { updated in
+                    if let idx = viewModel.contacts.firstIndex(where: { $0.id == updated.id }) {
+                        viewModel.contacts[idx] = updated
+                    }
+                })) {
                     ContactRowView(contact: contact)
                 }
                 .listRowBackground(Color.pingBackground)
                 .listRowSeparatorTint(Color.pingSurface3)
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        Task { await viewModel.deleteContact(contact) }
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
             }
         }
         .listStyle(.plain)
@@ -124,7 +156,7 @@ struct NetworkTabView: View {
 
     private var gridContent: some View {
         ScrollView {
-            ContactCardGridView(contacts: filtered)
+            ContactCardGridView(contacts: viewModel.filteredContacts)
                 .padding(.top, 8)
         }
         .refreshable { await viewModel.loadContacts() }
@@ -134,13 +166,14 @@ struct NetworkTabView: View {
         VStack(spacing: 16) {
             Image(systemName: "person.2")
                 .font(.system(size: 44))
-                .foregroundStyle(Color.pingTextMuted)
+                .foregroundStyle(Color.pingTextSecondary)
             Text("Your network starts here.")
                 .font(.headline)
                 .foregroundStyle(Color.pingTextPrimary)
-            Text("Log your first contact.")
+            Text("Every great relationship starts with a name.")
                 .font(.subheadline)
                 .foregroundStyle(Color.pingTextSecondary)
+                .multilineTextAlignment(.center)
             PingButton(title: "Add Contact", action: {
                 showQuickCapture = true
             }, style: .primary)
@@ -170,9 +203,9 @@ struct NetworkTabView: View {
             Text("Couldn't load your network")
                 .font(.headline)
                 .foregroundStyle(Color.pingTextPrimary)
-            Text(error.localizedDescription)
+            Text(userFacingMessage(for: error))
                 .font(.subheadline)
-                .foregroundStyle(Color.pingTextMuted)
+                .foregroundStyle(Color.pingTextSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 20)
             PingButton(title: "Try Again") {

@@ -80,8 +80,19 @@ actor SupabaseService {
 
     // MARK: - Auth
 
-    var currentUserId: UUID? {
+    nonisolated var currentUserId: UUID? {
         client.auth.currentUser?.id
+    }
+
+    nonisolated var currentUserEmail: String? {
+        client.auth.currentUser?.email
+    }
+
+    /// Synchronous check for a non-expired local session in Keychain.
+    /// Used at app startup to avoid a flash of the login screen on cold launch.
+    nonisolated var hasValidLocalSession: Bool {
+        guard let session = client.auth.currentSession else { return false }
+        return !session.isExpired
     }
 
     func signOut() async throws {
@@ -143,6 +154,16 @@ actor SupabaseService {
             .value
     }
 
+    func fetchContacts(ids: [UUID]) async throws -> [Contact] {
+        guard !ids.isEmpty else { return [] }
+        return try await client
+            .from("contacts")
+            .select()
+            .in("id", values: ids.map { $0.uuidString })
+            .execute()
+            .value
+    }
+
     func fetchContact(id: UUID) async throws -> Contact {
         try await client
             .from("contacts")
@@ -181,6 +202,18 @@ actor SupabaseService {
             .execute()
     }
 
+    func fetchContactIdsWithoutEmbedding(userId: UUID) async throws -> [UUID] {
+        struct Row: Decodable { let id: UUID }
+        let rows: [Row] = try await client
+            .from("contacts")
+            .select("id")
+            .eq("user_id", value: userId)
+            .filter("embedding", operator: "is", value: "null")
+            .execute()
+            .value
+        return rows.map(\.id)
+    }
+
     func deleteContact(id: UUID) async throws {
         try await client
             .from("contacts")
@@ -213,12 +246,15 @@ actor SupabaseService {
 
     // MARK: - Nudges
 
-    func fetchPendingNudges(userId: UUID) async throws -> [Nudge] {
-        try await client
+    func fetchActiveNudges(userId: UUID) async throws -> [Nudge] {
+        let activeStatuses = [NudgeStatus.pending, .delivered, .opened].map { $0.rawValue }
+        let thirtyDaysAgo = iso8601String(from: Date(timeIntervalSinceNow: -30 * 24 * 3_600))
+        return try await client
             .from("nudges")
             .select()
             .eq("user_id", value: userId)
-            .eq("status", value: NudgeStatus.pending.rawValue)
+            .in("status", values: activeStatuses)
+            .gte("scheduled_at", value: thirtyDaysAgo)
             .order("scheduled_at", ascending: true)
             .execute()
             .value
@@ -255,6 +291,48 @@ actor SupabaseService {
             .update(["draft_message": AnyJSON.string(draftMessage)])
             .eq("id", value: id)
             .execute()
+    }
+
+    func fetchSnoozedNudges(userId: UUID) async throws -> [Nudge] {
+        try await client
+            .from("nudges")
+            .select()
+            .eq("user_id", value: userId)
+            .eq("status", value: NudgeStatus.snoozed.rawValue)
+            .order("snoozed_until", ascending: true)
+            .execute()
+            .value
+    }
+
+    func createNudge(contactId: UUID, userId: UUID, reason: String?) async throws -> Nudge {
+        struct NudgeInsert: Encodable {
+            let contactId: UUID
+            let userId: UUID
+            let status: String
+            let reason: String?
+            let scheduledAt: Date
+            enum CodingKeys: String, CodingKey {
+                case contactId   = "contact_id"
+                case userId      = "user_id"
+                case status
+                case reason
+                case scheduledAt = "scheduled_at"
+            }
+        }
+        let payload = NudgeInsert(
+            contactId: contactId,
+            userId: userId,
+            status: NudgeStatus.pending.rawValue,
+            reason: reason,
+            scheduledAt: Date()
+        )
+        return try await client
+            .from("nudges")
+            .insert(payload)
+            .select()
+            .single()
+            .execute()
+            .value
     }
 
     // MARK: - Goals
@@ -395,8 +473,22 @@ actor SupabaseService {
         return row.toneSamples ?? []
     }
 
+    /// Appends a new tone sample to the user's existing list.
+    /// Used during onboarding to build up the sample set.
     func saveToneSample(_ text: String, userId: UUID) async throws {
-        let payload = ToneSampleUpsert(id: userId, toneSamples: [text])
+        let existing = (try? await fetchToneSamples(userId: userId)) ?? []
+        let merged = existing + [text]
+        let payload = ToneSampleUpsert(id: userId, toneSamples: merged)
+        try await client
+            .from("profiles")
+            .upsert(payload, onConflict: "id")
+            .execute()
+    }
+
+    /// Replaces the entire tone samples list with a single updated sample.
+    /// Used from the Tone Settings sheet when the user edits their existing tone.
+    func replaceToneSamples(_ samples: [String], userId: UUID) async throws {
+        let payload = ToneSampleUpsert(id: userId, toneSamples: samples)
         try await client
             .from("profiles")
             .upsert(payload, onConflict: "id")

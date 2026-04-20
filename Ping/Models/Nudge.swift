@@ -33,4 +33,30 @@ struct Nudge: Identifiable, Codable, Sendable {
         case snoozedUntil = "snoozed_until"
         case createdAt    = "created_at"
     }
+
+    init(
+        id: UUID,
+        contactId: UUID,
+        userId: UUID,
+        status: NudgeStatus,
+        reason: String? = nil,
+        draftMessage: String? = nil,
+        scheduledAt: Date,
+        deliveredAt: Date? = nil,
+        actedAt: Date? = nil,
+        snoozedUntil: Date? = nil,
+        createdAt: Date
+    ) {
+        self.id = id
+        self.contactId = contactId
+        self.userId = userId
+        self.status = status
+        self.reason = reason
+        self.draftMessage = draftMessage
+        self.scheduledAt = scheduledAt
+        self.deliveredAt = deliveredAt
+        self.actedAt = actedAt
+        self.snoozedUntil = snoozedUntil
+        self.createdAt = createdAt
+    }
 }

@@ -1,15 +1,38 @@
 import SwiftUI
 import Inject
+import Supabase
 
 struct ContactDetailView: View {
     @ObserveInjection var inject
     let contact: Contact
-    var interactions: [Interaction] = []
     var nudge: Nudge? = nil
+    /// Called after the user saves an edit, so parent views can refresh their list.
+    var onContactUpdated: ((Contact) -> Void)? = nil
 
-    @State private var isDraftLoading = true
+    @State private var contactViewModel = ContactViewModel()
     @State private var showMessageDraft = false
+    @State private var showLogSheet = false
+    @State private var logSheetIsNote = false
+    @State private var showEditContact = false
     @State private var pingViewModel = PingViewModel()
+    @State private var resolvedNudge: Nudge? = nil
+    @State private var isResolvingNudge = false
+
+    private func resolveAndOpenDraft() async {
+        if let existing = nudge {
+            resolvedNudge = existing
+        } else {
+            isResolvingNudge = true
+            defer { isResolvingNudge = false }
+            guard let userId = SupabaseService.shared.currentUserId else { return }
+            resolvedNudge = try? await SupabaseService.shared.createNudge(
+                contactId: contact.id,
+                userId: userId,
+                reason: "General check-in"
+            )
+        }
+        if resolvedNudge != nil { showMessageDraft = true }
+    }
 
     var body: some View {
         ScrollView {
@@ -35,20 +58,26 @@ struct ContactDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Edit") { }
+                Button("Edit") { showEditContact = true }
                     .foregroundStyle(Color.pingAccent)
             }
         }
         .sheet(isPresented: $showMessageDraft) {
-            if let nudge {
+            if let nudge = resolvedNudge {
                 MessageDraftView(nudge: nudge, contact: contact, pingViewModel: pingViewModel)
             }
         }
-        .onAppear {
-            Task {
-                try? await Task.sleep(for: .seconds(1.5))
-                withAnimation { isDraftLoading = false }
+        .sheet(isPresented: $showLogSheet) {
+            LogInteractionSheet(isNote: logSheetIsNote, contactViewModel: contactViewModel)
+        }
+        .sheet(isPresented: $showEditContact) {
+            EditContactSheet(contact: contactViewModel.contact ?? contact) { updated in
+                contactViewModel.contact = updated
+                onContactUpdated?(updated)
             }
+        }
+        .onAppear {
+            Task { await contactViewModel.load(contactId: contact.id) }
         }
         .enableInjection()
     }
@@ -59,7 +88,7 @@ struct ContactDetailView: View {
         VStack(spacing: 8) {
             ZStack(alignment: .topTrailing) {
                 ContactAvatarView(name: contact.name, size: 72)
-                WarmthDot(score: contact.warmthScore, size: 12)
+                WarmthDot(score: contactViewModel.contact?.warmthScore ?? contact.warmthScore, size: 12, showLegendOnTap: true)
                     .offset(x: 4, y: -4)
             }
 
@@ -67,11 +96,12 @@ struct ContactDetailView: View {
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.pingTextPrimary)
 
-            if let company = contact.company, let title = contact.title {
+            let displayContact = contactViewModel.contact ?? contact
+            if let company = displayContact.company, let title = displayContact.title {
                 Text("\(company) · \(title)")
                     .font(.subheadline)
                     .foregroundStyle(Color.pingTextSecondary)
-            } else if let company = contact.company {
+            } else if let company = displayContact.company {
                 Text(company)
                     .font(.subheadline)
                     .foregroundStyle(Color.pingTextSecondary)
@@ -82,15 +112,15 @@ struct ContactDetailView: View {
                 .foregroundStyle(warmthColor)
 
             HStack(spacing: 20) {
-                if let email = contact.email {
+                if let email = displayContact.email {
                     Link(destination: URL(string: "mailto:\(email)")!) {
                         Image(systemName: "envelope.fill")
                             .font(.title3)
                             .foregroundStyle(Color.pingTextMuted)
                     }
                 }
-                if contact.linkedinUrl != nil {
-                    Button { } label: {
+                if let urlStr = displayContact.linkedinUrl, let url = URL(string: urlStr) {
+                    Link(destination: url) {
                         Image(systemName: "person.crop.square.filled.and.at.rectangle")
                             .font(.title3)
                             .foregroundStyle(Color.pingTextMuted)
@@ -112,7 +142,7 @@ struct ContactDetailView: View {
                 .textCase(.uppercase)
                 .tracking(0.5)
 
-            if isDraftLoading {
+            if contactViewModel.isLoading {
                 VStack(alignment: .leading, spacing: 8) {
                     ShimmerBox(height: 14, cornerRadius: 6)
                     ShimmerBox(width: 220, height: 14, cornerRadius: 6)
@@ -121,22 +151,34 @@ struct ContactDetailView: View {
                 Text("Generating draft...")
                     .font(.caption)
                     .foregroundStyle(Color.pingTextMuted)
-            } else {
-                Text("\"Hey \(contact.name.split(separator: " ").first.map(String.init) ?? contact.name), been a while — would love to catch up and hear how things are going at \(contact.company ?? "your new role"). Coffee next week?\"")
+            } else if !contactViewModel.messageDraft.isEmpty {
+                Text("\"\(contactViewModel.messageDraft)\"")
                     .font(.body)
                     .italic()
                     .foregroundStyle(Color.pingTextPrimary)
+            } else {
+                Text("Set up Gemini in Profile → Settings to enable AI drafts.")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.pingTextMuted)
             }
 
-            PingButton(title: "Edit & Send →", action: {
-                showMessageDraft = true
+            PingButton(title: isResolvingNudge ? "" : "Edit & Send →", action: {
+                Task { await resolveAndOpenDraft() }
             }, style: .primary)
+            .disabled(isResolvingNudge)
+            .overlay {
+                if isResolvingNudge {
+                    ProgressView().tint(.white)
+                }
+            }
 
             Button {
-                isDraftLoading = true
                 Task {
-                    try? await Task.sleep(for: .seconds(1.5))
-                    withAnimation { isDraftLoading = false }
+                    await contactViewModel.generateDraft(
+                        contact: contactViewModel.contact ?? contact,
+                        nudgeReason: nudge?.reason ?? "General check-in",
+                        forceRefresh: true
+                    )
                 }
             } label: {
                 Label("Regenerate", systemImage: "arrow.clockwise")
@@ -154,7 +196,8 @@ struct ContactDetailView: View {
     // MARK: - Context Section
 
     private var contextSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let displayContact = contactViewModel.contact ?? contact
+        return VStack(alignment: .leading, spacing: 0) {
             Text("Context")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.pingTextMuted)
@@ -164,18 +207,18 @@ struct ContactDetailView: View {
                 .padding(.horizontal, 16)
 
             VStack(spacing: 0) {
-                contextRow(icon: "mappin.circle.fill", label: "How we met", value: contact.howMet)
+                contextRow(icon: "mappin.circle.fill", label: "How we met", value: displayContact.howMet)
                 Divider().padding(.leading, 44)
-                if let metAt = contact.metAt {
+                if let metAt = displayContact.metAt {
                     contextRow(icon: "calendar", label: "Date met", value: metAt.shortFormatted)
                     Divider().padding(.leading, 44)
                 }
-                if let notes = contact.notes {
+                if let notes = displayContact.notes {
                     contextRow(icon: "note.text", label: "Notes", value: notes)
                     Divider().padding(.leading, 44)
                 }
-                if !contact.tags.isEmpty {
-                    contextRow(icon: "tag.fill", label: "Tags", value: contact.tags.map { "#\($0)" }.joined(separator: "  "))
+                if !displayContact.tags.isEmpty {
+                    contextRow(icon: "tag.fill", label: "Tags", value: displayContact.tags.map { "#\($0)" }.joined(separator: "  "))
                 }
             }
             .background(Color.pingSurface2)
@@ -218,14 +261,14 @@ struct ContactDetailView: View {
                 .padding(.horizontal, 16)
 
             VStack(spacing: 0) {
-                if interactions.isEmpty {
+                if contactViewModel.interactions.isEmpty {
                     Text("No interactions yet.")
                         .font(.subheadline)
                         .foregroundStyle(Color.pingTextMuted)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(20)
                 } else {
-                    let sorted = interactions.sorted { $0.occurredAt < $1.occurredAt }
+                    let sorted = contactViewModel.interactions.sorted { $0.occurredAt > $1.occurredAt }
                     ForEach(sorted) { interaction in
                         interactionRow(interaction)
                         if interaction.id != sorted.last?.id {
@@ -238,6 +281,8 @@ struct ContactDetailView: View {
 
                 HStack(spacing: 12) {
                     Button {
+                        logSheetIsNote = true
+                        showLogSheet = true
                     } label: {
                         Label("Add Note", systemImage: "note.text.badge.plus")
                             .font(.subheadline)
@@ -249,6 +294,8 @@ struct ContactDetailView: View {
                     Divider().frame(height: 20)
 
                     Button {
+                        logSheetIsNote = false
+                        showLogSheet = true
                     } label: {
                         Label("Log Interaction", systemImage: "plus.circle")
                             .font(.subheadline)
@@ -294,21 +341,235 @@ struct ContactDetailView: View {
 
     // MARK: - Warmth helpers
 
-    private var warmthLabel: String {
-        switch contact.warmthScore {
-        case 0.8...: return "Hot"
-        case 0.5..<0.8: return "Warm"
-        case 0.2..<0.5: return "Cool"
-        default: return "Cold"
+    private var warmthCategory: WarmthCategory {
+        WarmthCategory(score: contactViewModel.contact?.warmthScore ?? contact.warmthScore)
+    }
+
+    private var warmthLabel: String { warmthCategory.label }
+    private var warmthColor: Color  { warmthCategory.color }
+}
+
+// MARK: - Log Interaction Sheet
+
+private struct LogInteractionSheet: View {
+    let isNote: Bool
+    let contactViewModel: ContactViewModel
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var noteText = ""
+    @State private var selectedType: InteractionType = .message
+    @State private var notesText = ""
+    @State private var isSaving = false
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if isNote {
+                    Section("Note") {
+                        TextField("Add a note…", text: $noteText, axis: .vertical)
+                            .lineLimit(4...)
+                            .focused($focused)
+                    }
+                } else {
+                    Section("Interaction Type") {
+                        Picker("Type", selection: $selectedType) {
+                            Text("Message").tag(InteractionType.message)
+                            Text("Call").tag(InteractionType.call)
+                            Text("Met in person").tag(InteractionType.met)
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    Section("Notes (optional)") {
+                        TextField("Any details…", text: $notesText, axis: .vertical)
+                            .lineLimit(3...)
+                            .focused($focused)
+                    }
+                }
+            }
+            .navigationTitle(isNote ? "Add Note" : "Log Interaction")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        isSaving = true
+                        let type: InteractionType = isNote ? .note : selectedType
+                        let notes: String? = isNote
+                            ? (noteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : noteText)
+                            : (notesText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notesText)
+                        Task {
+                            await contactViewModel.logInteraction(type: type, notes: notes)
+                            dismiss()
+                        }
+                    }
+                    .disabled(isSaving || (isNote && noteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
+                }
+            }
+            .onAppear { focused = true }
+        }
+    }
+}
+
+// MARK: - Edit Contact Sheet
+
+struct EditContactSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let contact: Contact
+    let onSave: (Contact) -> Void
+
+    @State private var name: String
+    @State private var company: String
+    @State private var title: String
+    @State private var howMet: String
+    @State private var notes: String
+    @State private var linkedinUrl: String
+    @State private var email: String
+    @State private var phone: String
+    @State private var isSaving = false
+    @State private var errorMessage: String? = nil
+
+    init(contact: Contact, onSave: @escaping (Contact) -> Void) {
+        self.contact = contact
+        self.onSave = onSave
+        _name        = State(initialValue: contact.name)
+        _company     = State(initialValue: contact.company ?? "")
+        _title       = State(initialValue: contact.title ?? "")
+        _howMet      = State(initialValue: contact.howMet)
+        _notes       = State(initialValue: contact.notes ?? "")
+        _linkedinUrl = State(initialValue: contact.linkedinUrl ?? "")
+        _email       = State(initialValue: contact.email ?? "")
+        _phone       = State(initialValue: contact.phone ?? "")
+    }
+
+    private var canSave: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !howMet.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Basic Info") {
+                    LabeledContent("Name") {
+                        TextField("Full name", text: $name)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    LabeledContent("Company") {
+                        TextField("Company", text: $company)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    LabeledContent("Title") {
+                        TextField("Job title", text: $title)
+                            .multilineTextAlignment(.trailing)
+                    }
+                }
+
+                Section("How You Met") {
+                    TextField("e.g. Conference, intro from Sarah…", text: $howMet, axis: .vertical)
+                        .lineLimit(2...)
+                }
+
+                Section("Notes") {
+                    TextField("Any extra context…", text: $notes, axis: .vertical)
+                        .lineLimit(3...)
+                }
+
+                Section("Contact Info") {
+                    LabeledContent("Email") {
+                        TextField("Email", text: $email)
+                            .multilineTextAlignment(.trailing)
+                            .keyboardType(.emailAddress)
+                            .autocapitalization(.none)
+                    }
+                    LabeledContent("Phone") {
+                        TextField("Phone", text: $phone)
+                            .multilineTextAlignment(.trailing)
+                            .keyboardType(.phonePad)
+                    }
+                    LabeledContent("LinkedIn") {
+                        TextField("https://linkedin.com/in/…", text: $linkedinUrl)
+                            .multilineTextAlignment(.trailing)
+                            .autocapitalization(.none)
+                            .keyboardType(.URL)
+                    }
+                }
+
+                if let err = errorMessage {
+                    Section {
+                        Text(err)
+                            .foregroundStyle(.red)
+                            .font(.footnote)
+                    }
+                }
+            }
+            .navigationTitle("Edit Contact")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { saveContact() }
+                        .disabled(!canSave || isSaving)
+                }
+            }
         }
     }
 
-    private var warmthColor: Color {
-        switch contact.warmthScore {
-        case 0.8...: return .pingWarmthHot
-        case 0.5..<0.8: return .pingWarmthWarm
-        case 0.2..<0.5: return .pingWarmthCool
-        default: return .pingWarmthCold
+    private func saveContact() {
+        isSaving = true
+        errorMessage = nil
+        Task {
+            var fields: [String: AnyJSON] = [
+                "name":    .string(name.trimmingCharacters(in: .whitespacesAndNewlines)),
+                "how_met": .string(howMet.trimmingCharacters(in: .whitespacesAndNewlines))
+            ]
+            let trimmedCompany     = company.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedTitle       = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedNotes       = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedLinkedin    = linkedinUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedEmail       = email.trimmingCharacters(in: .whitespacesAndNewlines)
+            let trimmedPhone       = phone.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            fields["company"]      = trimmedCompany.isEmpty    ? .null : .string(trimmedCompany)
+            fields["title"]        = trimmedTitle.isEmpty       ? .null : .string(trimmedTitle)
+            fields["notes"]        = trimmedNotes.isEmpty       ? .null : .string(trimmedNotes)
+            fields["linkedin_url"] = trimmedLinkedin.isEmpty    ? .null : .string(trimmedLinkedin)
+            fields["email"]        = trimmedEmail.isEmpty       ? .null : .string(trimmedEmail)
+            fields["phone"]        = trimmedPhone.isEmpty       ? .null : .string(trimmedPhone)
+
+            do {
+                try await SupabaseService.shared.updateContact(id: contact.id, fields: fields)
+                var updated = contact
+                updated.name        = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                updated.howMet      = howMet.trimmingCharacters(in: .whitespacesAndNewlines)
+                updated.company     = trimmedCompany.isEmpty    ? nil : trimmedCompany
+                updated.title       = trimmedTitle.isEmpty       ? nil : trimmedTitle
+                updated.notes       = trimmedNotes.isEmpty       ? nil : trimmedNotes
+                updated.linkedinUrl = trimmedLinkedin.isEmpty    ? nil : trimmedLinkedin
+                updated.email       = trimmedEmail.isEmpty       ? nil : trimmedEmail
+                updated.phone       = trimmedPhone.isEmpty       ? nil : trimmedPhone
+                onSave(updated)
+                dismiss()
+                // Re-generate the semantic embedding in the background so search
+                // reflects the updated name/company/title/notes/howMet.
+                let snapshot = updated
+                Task.detached(priority: .background) {
+                    let text = "\(snapshot.name), \(snapshot.title ?? "") at \(snapshot.company ?? ""). Met at \(snapshot.howMet). Notes: \(snapshot.notes ?? "")."
+                    if let embedding = try? await GeminiService.embed(text, taskType: .retrievalDocument) {
+                        try? await SupabaseService.shared.updateContactEmbedding(
+                            id: snapshot.id,
+                            embeddingString: embedding.pgVectorLiteral
+                        )
+                    }
+                }
+            } catch {
+                isSaving = false
+                errorMessage = "Failed to save: \(error.localizedDescription)"
+            }
         }
     }
 }

@@ -6,12 +6,31 @@ enum EmbeddingTaskType: String {
     case semanticSimilarity = "SEMANTIC_SIMILARITY"
 }
 
+enum DraftTone: String, CaseIterable, Identifiable {
+    case warmCheckIn    = "Warm check-in"
+    case opportunityAsk = "Opportunity ask"
+    case casualUpdate   = "Casual update"
+
+    var id: String { rawValue }
+
+    var promptBias: String {
+        switch self {
+        case .warmCheckIn:
+            return "Make it feel like genuine human warmth with no agenda. Just reconnecting."
+        case .opportunityAsk:
+            return "Naturally weave in a specific opportunity or ask — keep it low-pressure and conversational."
+        case .casualUpdate:
+            return "Very casual, like catching up with an old friend. Short and breezy."
+        }
+    }
+}
+
 struct GeminiService {
 
     // MARK: - Endpoints
 
     private static let embeddingEndpoint =
-        "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent"
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2-preview:embedContent"
     private static let generateEndpoint =
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
@@ -23,7 +42,7 @@ struct GeminiService {
         guard !apiKey.isEmpty else { throw GeminiError.missingAPIKey }
 
         let body = EmbedRequest(
-            model: "models/text-embedding-004",
+            model: "models/gemini-embedding-2-preview",
             content: Content(parts: [Part(text: text)]),
             taskType: taskType.rawValue
         )
@@ -35,14 +54,16 @@ struct GeminiService {
     static func generateDraft(
         contact: Contact,
         nudgeReason: String,
-        toneSamples: [String]
+        toneSamples: [String],
+        tone: DraftTone? = nil
     ) async throws -> String {
         let apiKey = Config.geminiAPIKey
         guard !apiKey.isEmpty else { throw GeminiError.missingAPIKey }
 
-        let toneText = toneSamples.isEmpty
+        var toneText = toneSamples.isEmpty
             ? "Conversational, warm, not overly formal. Short sentences. Human."
             : toneSamples.joined(separator: "\n")
+        if let tone { toneText += "\n\nTONE DIRECTION: \(tone.promptBias)" }
 
         let systemPrompt = buildDraftSystemPrompt(contact: contact, nudgeReason: nudgeReason, toneText: toneText)
 
@@ -193,6 +214,7 @@ struct GeminiService {
         let model: String
         let content: Content
         let taskType: String
+        let outputDimensionality: Int = 768
     }
 
     private struct EmbeddingValues: Decodable {

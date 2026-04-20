@@ -5,26 +5,44 @@ import UIKit
 @MainActor
 final class AuthViewModel: NSObject, ObservableObject {
 
-    @Published var isAuthenticated: Bool = false
+    @Published var isAuthenticated: Bool = SupabaseService.shared.hasValidLocalSession
     @Published var userId: UUID? = nil
     @Published var hasToneSamples: Bool = false
     @Published var toneCheckFailed: Bool = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
 
+    /// True while we know a valid local session exists but the auth stream
+    /// hasn't yet fired its initial .signedIn event. Prevents a flash of
+    /// WelcomeView on cold launch for already-authenticated users.
+    @Published var isRestoringSession: Bool = SupabaseService.shared.hasValidLocalSession
+
     private var appleSignInContinuation: CheckedContinuation<ASAuthorization, Error>?
 
     // MARK: - Auth State Listener
 
     func listenToAuthState() {
+        // Safety timeout: if the auth stream doesn't resolve within 2 seconds,
+        // clear isRestoringSession so the user never gets a permanent white screen.
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            if isRestoringSession {
+                isRestoringSession = false
+            }
+        }
+
         Task {
             for await (event, session) in await SupabaseService.shared.authStateChanges {
                 switch event {
-                case .signedIn:
-                    if session?.isExpired == true { break }
+                case .signedIn, .initialSession:
+                    if session?.isExpired == true {
+                        isRestoringSession = false
+                        break
+                    }
                     let uid = session?.user.id
                     userId = uid
-                    isAuthenticated = true
+                    isAuthenticated = uid != nil
+                    isRestoringSession = false
                     if let uid {
                         await checkToneSamples(userId: uid)
                     }
@@ -33,8 +51,16 @@ final class AuthViewModel: NSObject, ObservableObject {
                     isAuthenticated = false
                     hasToneSamples = false
                     toneCheckFailed = false
+                    isRestoringSession = false
+                    GoogleIntegrationState.shared.googleUser = nil
+                    GoogleIntegrationState.shared.calendarSuggestions = []
+                    GoogleIntegrationState.shared.gmailSuggestions = []
+                case .tokenRefreshed:
+                    // Keep Share Extension tokens current so it doesn't get 401s after rotation.
+                    await SupabaseService.shared.persistSessionForExtension()
+                    isRestoringSession = false
                 default:
-                    break
+                    isRestoringSession = false
                 }
             }
         }

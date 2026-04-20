@@ -35,7 +35,15 @@ struct NudgeCardView: View {
             VStack(alignment: .leading, spacing: 12) {
                 // Header: avatar + name + warmth dot
                 HStack(spacing: 10) {
-                    ContactAvatarView(name: contact.name, size: 40)
+                    ZStack(alignment: .topLeading) {
+                        ContactAvatarView(name: contact.name, size: 40)
+                        if nudge.status == .delivered || nudge.status == .opened {
+                            Circle()
+                                .fill(Color.pingAccent)
+                                .frame(width: 10, height: 10)
+                                .offset(x: -2, y: -2)
+                        }
+                    }
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(contact.name)
@@ -68,10 +76,11 @@ struct NudgeCardView: View {
                         .lineLimit(3)
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
-                    Text("Generating your draft…")
-                        .font(.body)
-                        .italic()
-                        .foregroundStyle(Color.pingTextMuted)
+                    VStack(alignment: .leading, spacing: 6) {
+                        ShimmerBox(height: 13, cornerRadius: 4)
+                        ShimmerBox(width: 200, height: 13, cornerRadius: 4)
+                        ShimmerBox(width: 140, height: 13, cornerRadius: 4)
+                    }
                 }
 
                 // CTA button
@@ -90,6 +99,7 @@ struct NudgeCardView: View {
         .buttonStyle(.plain)
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button {
+                HapticEngine.impact(.light)
                 showSnoozePicker = true
             } label: {
                 Label("Snooze", systemImage: "bell.slash.fill")
@@ -98,6 +108,7 @@ struct NudgeCardView: View {
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
+                HapticEngine.impact(.medium)
                 Task { await onDismiss() }
             } label: {
                 Label("Dismiss", systemImage: "xmark")

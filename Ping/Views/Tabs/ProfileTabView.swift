@@ -29,10 +29,20 @@ private enum ImportPhase: Equatable {
 struct ProfileTabView: View {
     @ObserveInjection var inject
     @Environment(GoogleIntegrationState.self) private var googleState
+    @ObservedObject var authViewModel: AuthViewModel
 
     @State private var showLinkedInSheet = false
     @State private var showToneSettingsSheet = false
-    @State private var importedCount = UserDefaults.standard.integer(forKey: "linkedinImportCount")
+    @State private var showGeminiKeySheet = false
+    @State private var isBackfillingEmbeddings = false
+    @State private var backfillResult: String? = nil
+    private var linkedInCountKey: String {
+        "linkedinImportCount_\(authViewModel.userId?.uuidString ?? "anon")"
+    }
+    @State private var importedCount = 0
+    @State private var aiHeaderTapCount = 0
+    @State private var showDeveloperTools = false
+    @State private var showSignOutConfirm = false
 
     // Google state
     @State private var isSigningIn = false
@@ -49,12 +59,22 @@ struct ProfileTabView: View {
                 Color.pingBackground.ignoresSafeArea()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
+                        sectionHeader("ACCOUNT")
+                        accountSection
+
                         sectionHeader("INTEGRATIONS")
 
                         googleSection
                         linkedInRow
 
                         sectionHeader("AI")
+                            .onTapGesture {
+                                aiHeaderTapCount += 1
+                                if aiHeaderTapCount >= 5 {
+                                    showDeveloperTools = true
+                                    aiHeaderTapCount = 0
+                                }
+                            }
                         aiSettingsRow
                     }
                     .padding(.top, 8)
@@ -65,15 +85,18 @@ struct ProfileTabView: View {
             .sheet(isPresented: $showLinkedInSheet) {
                 LinkedInImportSheet(
                     onComplete: { count in
-                        let previous = UserDefaults.standard.integer(forKey: "linkedinImportCount")
+                        let previous = UserDefaults.standard.integer(forKey: linkedInCountKey)
                         let total = previous + count
-                        UserDefaults.standard.set(total, forKey: "linkedinImportCount")
+                        UserDefaults.standard.set(total, forKey: linkedInCountKey)
                         importedCount = total
                     }
                 )
             }
             .sheet(isPresented: $showToneSettingsSheet) {
                 ToneSettingsSheet()
+            }
+            .sheet(isPresented: $showGeminiKeySheet) {
+                GeminiKeySheet()
             }
             .sheet(isPresented: $showCalendarSuggestions) {
                 CalendarSuggestionsSheet()
@@ -87,8 +110,57 @@ struct ProfileTabView: View {
             } message: {
                 Text(googleErrorMessage ?? "")
             }
+            .confirmationDialog("Sign Out", isPresented: $showSignOutConfirm, titleVisibility: .visible) {
+                Button("Sign Out", role: .destructive) {
+                    Task { try? await SupabaseService.shared.signOut() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("You'll need to sign in again to access Ping.")
+            }
+        }
+        .task(id: authViewModel.userId) {
+            importedCount = UserDefaults.standard.integer(forKey: linkedInCountKey)
         }
         .enableInjection()
+    }
+
+    // MARK: - Account Section
+
+    private var accountSection: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 14) {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Color.pingTextMuted)
+                    .frame(width: 36)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Signed in")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Color.pingTextPrimary)
+                    if let email = SupabaseService.shared.currentUserEmail {
+                        Text(email)
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.pingTextMuted)
+                    }
+                }
+
+                Spacer()
+
+                Button("Sign Out") {
+                    showSignOutConfirm = true
+                }
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Color.pingDestructive)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+        }
+        .background(Color.pingSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 16)
+        .padding(.bottom, 2)
     }
 
     // MARK: - Google Section
@@ -268,10 +340,13 @@ struct ProfileTabView: View {
                         let s = suggestion
                         googleState.gmailSuggestions.removeAll { $0.id == s.id }
                         Task {
-                            guard let userId = SupabaseService.shared.currentUserId else { return }
+                            guard let userId = SupabaseService.shared.currentUserId else {
+                                googleErrorMessage = "Please sign in again to continue."
+                                return
+                            }
                             let draft = ContactDraft(name: s.name, howMet: "Gmail", email: s.email)
                             let payload = ContactInsertPayload(draft: draft, userId: userId)
-                            try? await SupabaseService.shared.createContact(payload: payload)
+                            _ = try? await SupabaseService.shared.createContact(payload: payload)
                         }
                     }
                     .font(.system(size: 13, weight: .semibold))
@@ -301,7 +376,7 @@ struct ProfileTabView: View {
         do {
             googleState.googleUser = try await GoogleAuthService.signIn(presenting: rootVC)
         } catch {
-            googleErrorMessage = "Sign-in failed: \(error.localizedDescription)"
+            googleErrorMessage = userFacingMessage(for: error)
         }
     }
 
@@ -313,7 +388,10 @@ struct ProfileTabView: View {
             let token = try await GoogleAuthService.getAccessToken(user: user)
             let drafts = try await GoogleContactsService.fetchContacts(accessToken: token)
             let service = SupabaseService.shared
-            guard let userId = await service.currentUserId else { return }
+            guard let userId = service.currentUserId else {
+                googleErrorMessage = "Please sign in again to continue."
+                return
+            }
             let existing = (try? await service.fetchContacts(userId: userId)) ?? []
             let (toImport, _) = LinkedInImportService.deduplicateAgainstExisting(drafts: drafts, existing: existing)
             var saved: [Contact] = []
@@ -323,6 +401,10 @@ struct ProfileTabView: View {
                 }
             }
             contactsImportCount = saved.count
+            // Notify NetworkTabView to reload once all contacts are saved.
+            if !saved.isEmpty {
+                NotificationCenter.default.post(name: .contactsDidImport, object: nil)
+            }
             Task.detached(priority: .background) {
                 for contact in saved {
                     let text = "\(contact.name), \(contact.title ?? "") at \(contact.company ?? ""). Met at \(contact.howMet)."
@@ -347,6 +429,9 @@ struct ProfileTabView: View {
                 accessToken: token,
                 userEmail: googleState.userEmail
             )
+            if !googleState.calendarSuggestions.isEmpty {
+                showCalendarSuggestions = true
+            }
         } catch {
             googleErrorMessage = "Calendar scan failed: \(error.localizedDescription)"
         }
@@ -424,38 +509,152 @@ struct ProfileTabView: View {
     // MARK: - Helpers
 
     private var aiSettingsRow: some View {
-        Button {
-            showToneSettingsSheet = true
-        } label: {
+        VStack(spacing: 0) {
+            // Row 1: Gemini API Key
+            Button {
+                showGeminiKeySheet = true
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: "key.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Color.pingAccent)
+                        .frame(width: 36)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Gemini API Key")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(Color.pingTextPrimary)
+                        if KeychainHelper.get("GEMINI_API_KEY") != nil {
+                            Text("Configured ✓")
+                                .font(.system(size: 13))
+                                .foregroundStyle(Color.pingSuccess)
+                        } else {
+                            Text("Not set — AI features disabled")
+                                .font(.system(size: 13))
+                                .foregroundStyle(Color.pingDestructive)
+                        }
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color.pingTextSubtle)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
+            }
+            .buttonStyle(.plain)
+
+            Divider().padding(.leading, 70)
+
+            // Row 2: Writing Tone
+            Button {
+                showToneSettingsSheet = true
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: "waveform.and.mic")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Color.pingAccent)
+                        .frame(width: 36)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Writing Tone")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(Color.pingTextPrimary)
+                        Text("Update how AI drafts should sound")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.pingTextMuted)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color.pingTextSubtle)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
+            }
+            .buttonStyle(.plain)
+
+            // Row 3: Embedding Backfill (developer tool — tap AI header 5 times to reveal)
+            if showDeveloperTools {
+            Divider().padding(.leading, 70)
+
             HStack(spacing: 14) {
-                Image(systemName: "waveform.and.mic")
-                    .font(.system(size: 18))
+                Image(systemName: "waveform.badge.plus")
+                    .font(.system(size: 16))
                     .foregroundStyle(Color.pingAccent)
                     .frame(width: 36)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Writing Tone")
+                    Text("Embedding Backfill")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(Color.pingTextPrimary)
-                    Text("Update how AI drafts should sound")
+                    Text(backfillResult ?? "Re-index contacts for semantic search")
                         .font(.system(size: 13))
-                        .foregroundStyle(Color.pingTextMuted)
+                        .foregroundStyle(backfillResult != nil ? Color.pingSuccess : Color.pingTextMuted)
                 }
 
                 Spacer()
 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Color.pingTextSubtle)
+                if isBackfillingEmbeddings {
+                    ProgressView()
+                        .tint(Color.pingAccent)
+                } else {
+                    Button("Run") {
+                        Task { await backfillEmbeddings() }
+                    }
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Color.pingAccent)
+                }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
-            .background(Color.pingSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            } // end showDeveloperTools
         }
-        .buttonStyle(.plain)
+        .background(Color.pingSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, 16)
         .padding(.bottom, 2)
+    }
+
+    private func backfillEmbeddings() async {
+        guard !isBackfillingEmbeddings else { return }
+        guard KeychainHelper.get("GEMINI_API_KEY") != nil else {
+            backfillResult = "No API key configured"
+            return
+        }
+        guard let userId = SupabaseService.shared.currentUserId else {
+            backfillResult = "Please sign in again to continue."
+            return
+        }
+        isBackfillingEmbeddings = true
+        backfillResult = nil
+        defer { isBackfillingEmbeddings = false }
+
+        do {
+            let ids = try await SupabaseService.shared.fetchContactIdsWithoutEmbedding(userId: userId)
+            guard !ids.isEmpty else {
+                backfillResult = "All contacts already indexed"
+                return
+            }
+            let allContacts = try await SupabaseService.shared.fetchContacts(userId: userId)
+            let toEmbed = allContacts.filter { ids.contains($0.id) }
+            var count = 0
+            for contact in toEmbed {
+                let text = "\(contact.name), \(contact.title ?? "") at \(contact.company ?? ""). Met at \(contact.howMet). Notes: \(contact.notes ?? ""). Tags: \(contact.tags.joined(separator: ", "))"
+                if let embedding = try? await GeminiService.embed(text, taskType: .retrievalDocument) {
+                    try? await SupabaseService.shared.updateContactEmbedding(id: contact.id, embeddingString: embedding.pgVectorLiteral)
+                    count += 1
+                }
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+            }
+            backfillResult = "\(count) contact\(count == 1 ? "" : "s") indexed"
+        } catch {
+            backfillResult = "Failed: \(error.localizedDescription)"
+        }
     }
 
     private func sectionHeader(_ title: String) -> some View {
@@ -552,11 +751,75 @@ private struct ToneSettingsSheet: View {
         isSaving = true
         defer { isSaving = false }
         do {
-            try await SupabaseService.shared.saveToneSample(trimmed, userId: userId)
+            try await SupabaseService.shared.replaceToneSamples([trimmed], userId: userId)
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+}
+
+// MARK: - Gemini Key Sheet
+
+private struct GeminiKeySheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var apiKey = ""
+    private var hasExistingKey: Bool { KeychainHelper.get("GEMINI_API_KEY") != nil }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.pingBackground.ignoresSafeArea()
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Gemini powers semantic search and message drafts. Get a free key at ai.google.dev.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.pingTextSecondary)
+
+                    SecureField("Paste your API key here", text: $apiKey)
+                        .font(.system(size: 15, design: .monospaced))
+                        .foregroundStyle(Color.pingTextPrimary)
+                        .padding(14)
+                        .background(Color.pingSurface2)
+                        .cornerRadius(14)
+
+                    PingButton(title: "Save Key") {
+                        save()
+                    }
+                    .disabled(apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    if hasExistingKey {
+                        Button("Remove Key") {
+                            KeychainHelper.delete("GEMINI_API_KEY")
+                            dismiss()
+                        }
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color.pingDestructive)
+                        .frame(maxWidth: .infinity)
+                    }
+
+                    Spacer()
+                }
+                .padding(20)
+            }
+            .navigationTitle("Gemini API Key")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .foregroundStyle(Color.pingAccent)
+                }
+            }
+            .task {
+                apiKey = KeychainHelper.get("GEMINI_API_KEY") ?? ""
+            }
+        }
+    }
+
+    private func save() {
+        let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        KeychainHelper.set("GEMINI_API_KEY", value: trimmed)
+        dismiss()
     }
 }
 
@@ -599,7 +862,7 @@ struct CalendarSuggestionsSheet: View {
                                     let s = suggestion
                                     googleState.calendarSuggestions.removeAll { $0.id == s.id }
                                     Task {
-                                        guard let userId = await SupabaseService.shared.currentUserId else { return }
+                                        guard let userId = SupabaseService.shared.currentUserId else { return }
                                         let draft = ContactDraft(name: s.name, howMet: "Met at \(s.eventTitle)", email: s.email)
                                         let payload = ContactInsertPayload(draft: draft, userId: userId)
                                         if let contact = try? await SupabaseService.shared.createContact(payload: payload) {
@@ -960,6 +1223,6 @@ private struct LinkedInImportSheet: View {
 }
 
 #Preview {
-    ProfileTabView()
+    ProfileTabView(authViewModel: AuthViewModel())
         .environment(GoogleIntegrationState.shared)
 }

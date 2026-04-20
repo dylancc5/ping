@@ -4,11 +4,17 @@ import Inject
 struct GoalsPanelView: View {
     @ObserveInjection var inject
     @Bindable var viewModel: SearchViewModel
+    let contacts: [Contact]
+    var onRefresh: (() async -> Void)? = nil
     @State private var showAddGoal = false
+    @State private var recVM: RecommendationViewModel = RecommendationViewModel()
 
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
+                // Recommendations section — shown above goals when contacts are available
+                RecommendationsView(viewModel: recVM, contacts: contacts)
+
                 if viewModel.isLoadingGoals {
                     shimmerCards
                 } else if viewModel.goals.isEmpty {
@@ -18,7 +24,9 @@ struct GoalsPanelView: View {
                         GoalCardView(
                             goal: goal,
                             matches: viewModel.goalMatches[goal.id] ?? [],
-                            viewModel: viewModel
+                            isLoadingMatches: viewModel.goalMatchLoading[goal.id] ?? false,
+                            viewModel: viewModel,
+                            matchedContacts: viewModel.matchedContacts
                         )
                     }
                 }
@@ -29,8 +37,16 @@ struct GoalsPanelView: View {
             .padding(.top, 8)
             .padding(.bottom, 32)
         }
+        .refreshable {
+            await onRefresh?()
+            await recVM.compute(contacts: contacts)
+        }
         .sheet(isPresented: $showAddGoal) {
             AddGoalSheet(viewModel: viewModel)
+        }
+        .task(id: contacts.count) {
+            // Recompute recommendations whenever the contact list changes size
+            await recVM.compute(contacts: contacts)
         }
         .enableInjection()
     }
@@ -104,7 +120,9 @@ struct GoalsPanelView: View {
 private struct GoalCardView: View {
     let goal: Goal
     let matches: [GoalContactMatch]
+    let isLoadingMatches: Bool
     let viewModel: SearchViewModel
+    let matchedContacts: [UUID: Contact]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -120,7 +138,7 @@ private struct GoalCardView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.caption.weight(.medium))
-                        .foregroundStyle(Color.pingTextMuted)
+                        .foregroundStyle(Color.pingTextSecondary)
                         .padding(6)
                         .background(Color.pingSurface2)
                         .clipShape(Circle())
@@ -133,17 +151,32 @@ private struct GoalCardView: View {
             Divider()
                 .background(Color.pingSurface3)
 
-            // Matched contacts
-            if matches.isEmpty {
-                Text("Finding relevant contacts…")
+            // Matched contacts — three distinct states
+            if isLoadingMatches {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(0..<2, id: \.self) { _ in
+                        HStack(spacing: 10) {
+                            ShimmerBox(width: 32, height: 32, cornerRadius: 16)
+                            VStack(alignment: .leading, spacing: 4) {
+                                ShimmerBox(width: 110, height: 12)
+                                ShimmerBox(width: 80, height: 10)
+                            }
+                            Spacer()
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            } else if matches.isEmpty {
+                Text("No matching contacts yet — add more contacts to build your network.")
                     .font(.caption)
-                    .foregroundStyle(Color.pingTextMuted)
+                    .foregroundStyle(Color.pingTextSecondary)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
             } else {
                 VStack(spacing: 0) {
                     ForEach(matches.prefix(3)) { match in
-                        GoalMatchRowView(match: match)
+                        GoalMatchRowView(match: match, contact: matchedContacts[match.id])
                     }
                 }
             }
@@ -158,7 +191,7 @@ private struct GoalCardView: View {
 
 private struct GoalMatchRowView: View {
     let match: GoalContactMatch
-    @State private var contact: Contact?
+    let contact: Contact?
 
     private var subtitle: String {
         [match.company, match.title]
@@ -185,15 +218,20 @@ private struct GoalMatchRowView: View {
 
                 Spacer()
 
+                Text("\(Int(match.similarity * 100))% match")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Color.pingAccent)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color.pingAccentBadge)
+                    .clipShape(Capsule())
+
                 Image(systemName: "chevron.right")
                     .font(.caption)
-                    .foregroundStyle(Color.pingTextMuted)
+                    .foregroundStyle(Color.pingTextSecondary)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-        }
-        .task {
-            contact = try? await SupabaseService.shared.fetchContact(id: match.id)
         }
     }
 
@@ -203,6 +241,7 @@ private struct GoalMatchRowView: View {
             ContactDetailView(contact: contact)
         } else {
             ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }
@@ -214,6 +253,8 @@ private struct AddGoalSheet: View {
     let viewModel: SearchViewModel
 
     @State private var text = ""
+    @State private var isSaving = false
+    @State private var saveError: String? = nil
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -231,17 +272,37 @@ private struct AddGoalSheet: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .lineLimit(4...8)
                     .focused($focused)
+                    .disabled(isSaving)
 
                 Text("e.g. \"Applying to Stripe for product roles\" or \"Fundraising for my seed round\"")
                     .font(.caption)
                     .foregroundStyle(Color.pingTextMuted)
 
+                if let err = saveError {
+                    Text(err)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
                 Spacer()
+
+                if isSaving {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                            .tint(Color.pingAccent)
+                        Text("Saving goal…")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.pingTextMuted)
+                        Spacer()
+                    }
+                    .padding(.bottom, 8)
+                }
 
                 PingButton(title: "Save Goal", action: {
                     Task { await saveGoal() }
                 }, style: .primary)
-                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
             }
             .padding(24)
             .navigationTitle("New Goal")
@@ -250,6 +311,7 @@ private struct AddGoalSheet: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                         .foregroundStyle(Color.pingTextSecondary)
+                        .disabled(isSaving)
                 }
             }
         }
@@ -261,21 +323,22 @@ private struct AddGoalSheet: View {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
-        await viewModel.addGoal(text: trimmed)
+        isSaving = true
+        saveError = nil
 
-        // Grab the newly inserted goal (addGoal inserts at index 0)
-        if let newGoal = viewModel.goals.first {
-            Task {
-                guard let embedding = try? await GeminiService.embed(trimmed, taskType: .retrievalDocument) else { return }
+        // Use returned goal ID directly to avoid text-match ambiguity on duplicate goal text.
+        if let newGoal = await viewModel.addGoal(text: trimmed) {
+            if let embedding = try? await GeminiService.embed(trimmed, taskType: .retrievalDocument) {
                 try? await SupabaseService.shared.updateGoalEmbedding(id: newGoal.id, embeddingString: embedding.pgVectorLiteral)
-                await viewModel.loadGoals()
             }
+            await viewModel.loadGoals()
         }
 
+        isSaving = false
         dismiss()
     }
 }
 
 #Preview {
-    GoalsPanelView(viewModel: SearchViewModel())
+    GoalsPanelView(viewModel: SearchViewModel(), contacts: [])
 }

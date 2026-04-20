@@ -14,7 +14,11 @@ struct MessageDraftView: View {
     @State private var isGeneratingInitialDraft = false
     @State private var copiedFeedback = false
     @State private var missingInfoAlert: MissingInfoAlert? = nil
+    @State private var showEditContact = false
     @State private var regenerateError: Bool = false
+    @State private var showSuccessOverlay = false
+    @State private var selectedTone: DraftTone? = nil
+    @State private var showAIFallbackBanner = false
     @FocusState private var editorFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
@@ -34,12 +38,44 @@ struct MessageDraftView: View {
                     VStack(spacing: 20) {
                         contactContextCard
                         draftEditorCard
+                        if showAIFallbackBanner {
+                            HStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(Color.pingWarmthCool)
+                                Text("AI unavailable — here's a template to start from")
+                                    .font(.caption)
+                                    .foregroundStyle(Color.pingTextMuted)
+                                Spacer()
+                            }
+                            .padding(12)
+                            .background(Color.pingSurface2)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                        toneChipRow
                         regenerateButton
                         sendActionsRow
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
                     .padding(.bottom, 40)
+                }
+
+                if showSuccessOverlay {
+                    VStack(spacing: 16) {
+                        Text("🎉")
+                            .font(.system(size: 56))
+                        Text("Sent to \(contact.name.components(separatedBy: " ").first ?? contact.name)!")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(Color.pingTextPrimary)
+                        Text("Next best time: ~\(max(7, Int(contact.warmthScore * 20))) days")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.pingTextMuted)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.pingBackground.opacity(0.97))
+                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                    .zIndex(1)
                 }
             }
             .navigationTitle(contact.name)
@@ -58,7 +94,15 @@ struct MessageDraftView: View {
                 await prefillDraftIfNeeded()
             }
             .alert(item: $missingInfoAlert) { alert in
-                Alert(title: Text(alert.title), message: Text(alert.message), dismissButton: .default(Text("OK")))
+                Alert(
+                    title: Text(alert.title),
+                    message: Text(alert.message),
+                    primaryButton: .default(Text("Edit Contact")) { showEditContact = true },
+                    secondaryButton: .cancel()
+                )
+            }
+            .sheet(isPresented: $showEditContact) {
+                EditContactSheet(contact: contact, onSave: { _ in showEditContact = false })
             }
             .alert("Couldn't Regenerate", isPresented: $regenerateError) {
                 Button("OK", role: .cancel) {}
@@ -190,6 +234,36 @@ struct MessageDraftView: View {
 
     // MARK: - Regenerate Button
 
+    private var toneChipRow: some View {
+        HStack(spacing: 8) {
+            ForEach(DraftTone.allCases) { tone in
+                let isSelected = selectedTone == tone
+                Button {
+                    HapticEngine.impact(.light)
+                    selectedTone = tone
+                    regenerate()
+                } label: {
+                    HStack(spacing: 4) {
+                        if isSelected {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.caption)
+                        }
+                        Text(tone.rawValue)
+                            .font(.caption.weight(.medium))
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(isSelected ? Color.pingAccent : Color.pingSurface2)
+                    .foregroundStyle(isSelected ? Color.white : Color.pingTextSecondary)
+                    .clipShape(Capsule())
+                    .scaleEffect(isSelected ? 1.05 : 1.0)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+                }
+            }
+            Spacer()
+        }
+    }
+
     private var regenerateButton: some View {
         Button(action: regenerate) {
             HStack(spacing: 8) {
@@ -314,13 +388,20 @@ struct MessageDraftView: View {
     }
 
     private func sendViaLinkedIn() {
-        if let linkedinUrl = contact.linkedinUrl,
-           !linkedinUrl.isEmpty,
-           let url = URL(string: linkedinUrl) {
+        // Try LinkedIn app deep link to compose first, fall back to profile URL + copy.
+        if let handle = extractLinkedInHandle(from: contact.linkedinUrl),
+           let deepLink = URL(string: "linkedin://messaging/compose?recipient=\(handle)"),
+           UIApplication.shared.canOpenURL(deepLink) {
+            UIPasteboard.general.string = draftText
+            UIApplication.shared.open(deepLink)
+            onSendAction()
+        } else if let linkedinUrl = contact.linkedinUrl,
+                  !linkedinUrl.isEmpty,
+                  let url = URL(string: linkedinUrl) {
+            UIPasteboard.general.string = draftText
             UIApplication.shared.open(url)
             onSendAction()
         } else {
-            // No LinkedIn URL — copy and prompt
             UIPasteboard.general.string = draftText
             missingInfoAlert = MissingInfoAlert(
                 title: "Message Copied",
@@ -329,9 +410,20 @@ struct MessageDraftView: View {
         }
     }
 
+    private func extractLinkedInHandle(from urlString: String?) -> String? {
+        guard let urlString, let url = URL(string: urlString) else { return nil }
+        let components = url.pathComponents
+        guard let inIdx = components.firstIndex(of: "in"),
+              components.index(after: inIdx) < components.endIndex else { return nil }
+        return components[components.index(after: inIdx)]
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+    }
+
     private func copyToClipboard() {
         UIPasteboard.general.string = draftText
         saveDraftIfNeeded()
+        HapticEngine.impact(.light)
         withAnimation { copiedFeedback = true }
         Task {
             try? await Task.sleep(for: .seconds(2))
@@ -346,6 +438,11 @@ struct MessageDraftView: View {
             if draftText != (nudge.draftMessage ?? "") {
                 await vm.saveNudgeDraft(nudge, draft: draftText)
             }
+            HapticEngine.success()
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                showSuccessOverlay = true
+            }
+            try? await Task.sleep(for: .seconds(2.5))
             dismiss()
         }
     }
@@ -357,7 +454,8 @@ struct MessageDraftView: View {
             if let newDraft = await vm.generateDraft(
                 contact: contact,
                 nudgeReason: nudge.reason ?? "General check-in",
-                forceRefresh: true
+                forceRefresh: true,
+                tone: selectedTone
             ) {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     draftText = newDraft
@@ -378,6 +476,21 @@ struct MessageDraftView: View {
         ) {
             draftText = generated
             await vm.saveNudgeDraft(nudge, draft: generated)
+        } else {
+            draftText = fallbackTemplate(for: contact)
+            showAIFallbackBanner = true
+        }
+    }
+
+    private func fallbackTemplate(for contact: Contact) -> String {
+        let firstName = contact.name.components(separatedBy: " ").first ?? contact.name
+        switch contact.warmthScore {
+        case 0.7...:
+            return "Hey \(firstName), been a while! Hope everything's going well — would love to catch up soon."
+        case 0.4..<0.7:
+            return "Hi \(firstName), wanted to reach out and see how things are going. It's been a bit since we last connected!"
+        default:
+            return "Hi \(firstName), came across something that made me think of you — hope you're doing well. Would love to reconnect."
         }
     }
 

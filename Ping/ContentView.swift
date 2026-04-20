@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     var router: NotificationRouter
+    var authViewModel: AuthViewModel
     private let googleState = GoogleIntegrationState.shared
     @State private var selectedTab = 0
 
@@ -28,7 +29,7 @@ struct ContentView: View {
                 }
                 .tag(2)
 
-            ProfileTabView()
+            ProfileTabView(authViewModel: authViewModel)
                 .tabItem {
                     Label("You", systemImage: "person.crop.circle.fill")
                 }
@@ -41,10 +42,13 @@ struct ContentView: View {
                 selectedTab = 0
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .showQuickCapture)) { _ in
+            selectedTab = 1
+        }
     }
 }
 
 #Preview {
-    ContentView(router: NotificationRouter())
+    ContentView(router: NotificationRouter(), authViewModel: AuthViewModel())
         .environment(GoogleIntegrationState.shared)
 }

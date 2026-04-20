@@ -60,7 +60,9 @@ class ShareViewController: UIViewController {
 
         if url.host?.contains("linkedin.com") == true {
             if let handle = extractLinkedInHandle(from: url) {
-                nameField.placeholder = handle // best-effort from URL slug
+                nameField.placeholder = "@\(handle) — enter their full name"
+            } else {
+                nameField.placeholder = "Enter their full name"
             }
             howMetField.placeholder = "Where did you meet this person?"
         } else {
@@ -149,10 +151,35 @@ class ShareViewController: UIViewController {
         )
 
         do {
+            // Dedup: if this LinkedIn URL already exists for this user, don't insert again.
+            if let linkedinUrl, !linkedinUrl.isEmpty {
+                struct ExistingRow: Decodable { let id: UUID }
+                let existing: [ExistingRow] = try await client
+                    .from("contacts")
+                    .select("id")
+                    .eq("user_id", value: userId)
+                    .eq("linkedin_url", value: linkedinUrl)
+                    .limit(1)
+                    .execute()
+                    .value
+                if !existing.isEmpty {
+                    activityIndicator.stopAnimating()
+                    statusLabel.text = "Already in Ping!"
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                        self?.extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
+                    }
+                    return
+                }
+            }
+
             try await client
                 .from("contacts")
                 .insert(payload)
                 .execute()
+
+            // NOTE: Embedding generation is not supported from the Share Extension until a shared
+            // Keychain Access Group is configured. Use Embedding Backfill in Profile → AI Settings
+            // after import to ensure this contact appears in semantic search results.
 
             activityIndicator.stopAnimating()
             statusLabel.text = "Saved to Ping!"
