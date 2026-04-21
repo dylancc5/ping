@@ -15,8 +15,8 @@ final class PingViewModel {
 
     private let service = SupabaseService.shared
 
-    private static let coolingWarmthThreshold: Double = 0.5
-    private static let coolingIdleInterval: TimeInterval = 7 * 24 * 3_600 // 1 week
+    private var coolingWarmthThreshold: Double { RemoteConfigService.shared.config.coolingWarmthThreshold }
+    private var coolingIdleInterval: TimeInterval { RemoteConfigService.shared.config.coolingIdleDays * 24 * 3_600 }
 
     func load() async {
         guard let userId = service.currentUserId else { return }
@@ -126,8 +126,8 @@ final class PingViewModel {
     }
 
     private func isCooling(_ contact: Contact) -> Bool {
-        guard contact.warmthScore < Self.coolingWarmthThreshold else { return false }
+        guard contact.warmthScore < coolingWarmthThreshold else { return false }
         guard let lastContacted = contact.lastContactedAt else { return true }
-        return Date().timeIntervalSince(lastContacted) > Self.coolingIdleInterval
+        return Date().timeIntervalSince(lastContacted) > coolingIdleInterval
     }
 }

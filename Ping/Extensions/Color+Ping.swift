@@ -65,11 +65,15 @@ enum WarmthCategory {
     case hot, warm, cool, cold
 
     init(score: Double) {
-        switch score {
-        case 0.8...: self = .hot
-        case 0.5..<0.8: self = .warm
-        case 0.2..<0.5: self = .cool
-        default: self = .cold
+        let cfg = RemoteConfigService.shared.config
+        if score >= cfg.warmthHotThreshold {
+            self = .hot
+        } else if score >= cfg.warmthWarmThreshold {
+            self = .warm
+        } else if score >= cfg.warmthCoolThreshold {
+            self = .cool
+        } else {
+            self = .cold
         }
     }
 

@@ -124,6 +124,7 @@ struct PingApp: App {
             rootView
                 .task { authViewModel.listenToAuthState() }
                 .task { await restoreGoogleSession() }
+                .task { await RemoteConfigService.shared.refresh() }
                 .onOpenURL { GIDSignIn.sharedInstance.handle($0) }
         }
     }

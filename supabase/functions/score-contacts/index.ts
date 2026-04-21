@@ -19,13 +19,31 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // ──────────────────────────────────────────────────────────────────────
-// CONSTANTS
-// Keep in sync with NudgeScorer.swift on iOS.
+// REMOTE CONFIG
+// Constants are now read from the app_config table at runtime.
+// These defaults are used as fallbacks if the fetch fails or keys are missing.
 // ──────────────────────────────────────────────────────────────────────
 
-const NUDGE_THRESHOLD     = 0.65  // Contacts scoring above this get a nudge
-const MAX_DAILY_NUDGES    = 3     // Hard cap per user per day (anti-fatigue)
-const WARMTH_DECAY_FACTOR = 0.9   // Applied to warmth_score each time a nudge is created
+interface AppConfig {
+  nudge_threshold:     number
+  max_daily_nudges:    number
+  warmth_decay_factor: number
+}
+
+const CONFIG_DEFAULTS: AppConfig = {
+  nudge_threshold:     0.65,
+  max_daily_nudges:    3,
+  warmth_decay_factor: 0.9,
+}
+
+async function loadConfig(supabase: ReturnType<typeof createClient>): Promise<AppConfig> {
+  const { data } = await supabase
+    .from('app_config')
+    .select('data')
+    .eq('id', 1)
+    .single()
+  return { ...CONFIG_DEFAULTS, ...(data?.data ?? {}) }
+}
 
 // ──────────────────────────────────────────────────────────────────────
 // TYPE DEFINITIONS
@@ -181,13 +199,13 @@ function scoreContact(contact: Contact): number {
 /**
  * Score all contacts, filter by threshold, return sorted by score descending.
  */
-function scoreAndRank(contacts: Contact[]): ScoredContact[] {
+function scoreAndRank(contacts: Contact[], config: AppConfig): ScoredContact[] {
   const now = new Date()
   const scored: ScoredContact[] = []
 
   for (const contact of contacts) {
     const score = scoreContact(contact)
-    if (score < NUDGE_THRESHOLD) continue
+    if (score < config.nudge_threshold) continue
 
     const lastContactDate = contact.last_contacted_at
       ? new Date(contact.last_contacted_at)
@@ -224,8 +242,8 @@ function scoreAndRank(contacts: Contact[]): ScoredContact[] {
 //   After 20 nudge cycles:                     ~0.12  (effectively cold)
 // ──────────────────────────────────────────────────────────────────────
 
-function decayWarmth(currentScore: number): number {
-  return Math.max(0.0, currentScore * WARMTH_DECAY_FACTOR)
+function decayWarmth(currentScore: number, config: AppConfig): number {
+  return Math.max(0.0, currentScore * config.warmth_decay_factor)
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -273,6 +291,8 @@ Deno.serve(async (_req: Request) => {
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   )
+
+  const config = await loadConfig(supabase)
 
   const { data: users, error: usersError } = await supabase
     .from('profiles')
@@ -325,8 +345,8 @@ Deno.serve(async (_req: Request) => {
 
       const deviceToken: string | null = profile?.device_token ?? null
 
-      // Score all contacts, filter by threshold, cap at MAX_DAILY_NUDGES
-      const toNudge = scoreAndRank(contacts as Contact[]).slice(0, MAX_DAILY_NUDGES)
+      // Score all contacts, filter by threshold, cap at max_daily_nudges
+      const toNudge = scoreAndRank(contacts as Contact[], config).slice(0, config.max_daily_nudges)
 
       for (const sc of toNudge) {
         const { contact } = sc
@@ -356,7 +376,7 @@ Deno.serve(async (_req: Request) => {
         // Non-fatal if this update fails — the nudge was already created.
         const { error: warmthError } = await supabase
           .from('contacts')
-          .update({ warmth_score: decayWarmth(contact.warmth_score) })
+          .update({ warmth_score: decayWarmth(contact.warmth_score, config) })
           .eq('id', contact.id)
 
         if (warmthError) {

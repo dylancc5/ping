@@ -29,10 +29,14 @@ struct GeminiService {
 
     // MARK: - Endpoints
 
-    private static let embeddingEndpoint =
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2-preview:embedContent"
-    private static let generateEndpoint =
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+    private static var embeddingEndpoint: String {
+        let model = RemoteConfigService.shared.config.geminiEmbeddingModel
+        return "https://generativelanguage.googleapis.com/v1beta/models/\(model):embedContent"
+    }
+    private static var generateEndpoint: String {
+        let model = RemoteConfigService.shared.config.geminiGenerationModel
+        return "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent"
+    }
 
     // MARK: - Public Methods
 
@@ -42,7 +46,7 @@ struct GeminiService {
         guard !apiKey.isEmpty else { throw GeminiError.missingAPIKey }
 
         let body = EmbedRequest(
-            model: "models/gemini-embedding-2-preview",
+            model: "models/\(RemoteConfigService.shared.config.geminiEmbeddingModel)",
             content: Content(parts: [Part(text: text)]),
             taskType: taskType.rawValue
         )
@@ -70,7 +74,10 @@ struct GeminiService {
         let body = GenerateRequest(
             systemInstruction: Content(parts: [Part(text: systemPrompt)]),
             contents: [Content(parts: [Part(text: "Draft the message.")])],
-            generationConfig: GenerationConfig(temperature: 0.7, maxOutputTokens: 200)
+            generationConfig: GenerationConfig(
+                temperature: RemoteConfigService.shared.config.geminiDraftTemperature,
+                maxOutputTokens: RemoteConfigService.shared.config.geminiDraftMaxTokens
+            )
         )
         let response: GenerateResponse = try await APIClient.post(generateEndpoint, body: body, apiKey: apiKey)
         return response.candidates.first?.content.parts.first?.text ?? ""

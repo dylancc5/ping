@@ -389,9 +389,10 @@ actor SupabaseService {
     func matchContacts(
         queryEmbedding: [Float],
         userId: UUID,
-        threshold: Double = 0.5,
+        threshold: Double? = nil,
         count: Int = 10
     ) async throws -> [ContactSearchResult] {
+        let threshold = threshold ?? RemoteConfigService.shared.config.contactMatchThreshold
         let params = MatchContactsParams(
             queryEmbedding: queryEmbedding,
             userIdFilter: userId,
@@ -407,9 +408,10 @@ actor SupabaseService {
     func matchContactsForGoal(
         goalId: UUID,
         userId: UUID,
-        threshold: Double = 0.45,
+        threshold: Double? = nil,
         count: Int = 5
     ) async throws -> [GoalContactMatch] {
+        let threshold = threshold ?? RemoteConfigService.shared.config.goalMatchThreshold
         let params = MatchContactsForGoalParams(
             goalIdParam: goalId,
             userIdFilter: userId,
@@ -499,6 +501,17 @@ actor SupabaseService {
 
     private func iso8601String(from date: Date) -> String {
         ISO8601DateFormatter().string(from: date)
+    }
+
+    // MARK: - Remote Config
+
+    func fetchAppConfig() async throws -> RemoteConfigService.ConfigRow {
+        try await client.from("app_config")
+            .select("version, data")
+            .eq("id", value: 1)
+            .single()
+            .execute()
+            .value
     }
 }
 
