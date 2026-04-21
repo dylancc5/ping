@@ -8,10 +8,10 @@ struct RemoteConfig: Codable, Sendable {
     var warmthHotThreshold: Double = 0.8
     var warmthWarmThreshold: Double = 0.5
     var warmthCoolThreshold: Double = 0.2
-    var geminiGenerationModel: String = "gemini-2.0-flash"
-    var geminiEmbeddingModel: String = "gemini-embedding-2-preview"
-    var geminiDraftTemperature: Double = 0.7
-    var geminiDraftMaxTokens: Int = 200
+    var hfGenerationModel: String = "meta-llama/Llama-3.1-8B-Instruct"
+    var embeddingModel: String = "gemini-embedding-2-preview"
+    var hfDraftTemperature: Double = 0.7
+    var hfDraftMaxTokens: Int = 200
     var contactMatchThreshold: Double = 0.5
     var goalMatchThreshold: Double = 0.45
 
@@ -23,10 +23,10 @@ struct RemoteConfig: Codable, Sendable {
         case warmthHotThreshold     = "warmth_hot_threshold"
         case warmthWarmThreshold    = "warmth_warm_threshold"
         case warmthCoolThreshold    = "warmth_cool_threshold"
-        case geminiGenerationModel  = "gemini_generation_model"
-        case geminiEmbeddingModel   = "gemini_embedding_model"
-        case geminiDraftTemperature = "gemini_draft_temperature"
-        case geminiDraftMaxTokens   = "gemini_draft_max_tokens"
+        case hfGenerationModel      = "hf_generation_model"
+        case embeddingModel         = "embedding_model"
+        case hfDraftTemperature     = "hf_draft_temperature"
+        case hfDraftMaxTokens       = "hf_draft_max_tokens"
         case contactMatchThreshold  = "contact_match_threshold"
         case goalMatchThreshold     = "goal_match_threshold"
     }
@@ -42,10 +42,10 @@ struct RemoteConfig: Codable, Sendable {
         warmthHotThreshold     = (try? c.decode(Double.self, forKey: .warmthHotThreshold))     ?? d.warmthHotThreshold
         warmthWarmThreshold    = (try? c.decode(Double.self, forKey: .warmthWarmThreshold))    ?? d.warmthWarmThreshold
         warmthCoolThreshold    = (try? c.decode(Double.self, forKey: .warmthCoolThreshold))    ?? d.warmthCoolThreshold
-        geminiGenerationModel  = (try? c.decode(String.self, forKey: .geminiGenerationModel))  ?? d.geminiGenerationModel
-        geminiEmbeddingModel   = (try? c.decode(String.self, forKey: .geminiEmbeddingModel))   ?? d.geminiEmbeddingModel
-        geminiDraftTemperature = (try? c.decode(Double.self, forKey: .geminiDraftTemperature)) ?? d.geminiDraftTemperature
-        geminiDraftMaxTokens   = (try? c.decode(Int.self,    forKey: .geminiDraftMaxTokens))   ?? d.geminiDraftMaxTokens
+        hfGenerationModel      = (try? c.decode(String.self, forKey: .hfGenerationModel))      ?? d.hfGenerationModel
+        embeddingModel         = (try? c.decode(String.self, forKey: .embeddingModel))         ?? d.embeddingModel
+        hfDraftTemperature     = (try? c.decode(Double.self, forKey: .hfDraftTemperature))     ?? d.hfDraftTemperature
+        hfDraftMaxTokens       = (try? c.decode(Int.self,    forKey: .hfDraftMaxTokens))       ?? d.hfDraftMaxTokens
         contactMatchThreshold  = (try? c.decode(Double.self, forKey: .contactMatchThreshold))  ?? d.contactMatchThreshold
         goalMatchThreshold     = (try? c.decode(Double.self, forKey: .goalMatchThreshold))     ?? d.goalMatchThreshold
     }

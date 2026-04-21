@@ -48,8 +48,4 @@ enum Config {
         return lower.contains("your-supabase") || lower.contains("your-project") || lower == "your-supabase-anon-key"
     }
 
-    // Gemini API key stored in Keychain (never in plist or source)
-    static var geminiAPIKey: String {
-        KeychainHelper.get("GEMINI_API_KEY") ?? ""
-    }
 }

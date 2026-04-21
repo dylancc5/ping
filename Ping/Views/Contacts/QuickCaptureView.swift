@@ -266,7 +266,7 @@ struct QuickCaptureView: View {
     private func onRecordingFinished() {
         guard !transcript.isEmpty else { return }
         Task {
-            if let extracted = try? await GeminiService.extractContactFromTranscript(transcript) {
+            if let extracted = try? await HFService.extractContactFromTranscript(transcript) {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     if draft.name.isEmpty   { draft.name    = extracted.name }
                     if draft.howMet.isEmpty { draft.howMet  = extracted.howMet }

@@ -86,7 +86,7 @@ final class PingViewModel {
                 guard let contact = contacts[nudge.contactId] else { continue }
                 let reason = nudge.reason ?? "General check-in"
                 group.addTask {
-                    let draft = try? await GeminiService.generateDraft(
+                    let draft = try? await HFService.generateDraft(
                         contact: contact,
                         nudgeReason: reason,
                         toneSamples: toneSamples

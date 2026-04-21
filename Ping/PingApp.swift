@@ -111,8 +111,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 struct PingApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var authViewModel = AuthViewModel()
-    @State private var hasPromptedGeminiKey = false
-
     #if DEBUG
     init() {
         _ = InjectConfiguration.load
@@ -151,12 +149,6 @@ struct PingApp: App {
             }
         } else {
             ContentView(router: appDelegate.router, authViewModel: authViewModel)
-                .sheet(isPresented: Binding(
-                    get: { KeychainHelper.get("GEMINI_API_KEY") == nil && !hasPromptedGeminiKey },
-                    set: { if !$0 { hasPromptedGeminiKey = true } }
-                )) {
-                    GeminiKeySetupView()
-                }
         }
     }
 }

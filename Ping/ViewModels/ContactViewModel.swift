@@ -105,7 +105,7 @@ final class ContactViewModel {
         guard let userId = service.currentUserId else { return nil }
         let toneSamples = (try? await service.fetchToneSamples(userId: userId)) ?? []
         do {
-            let draft = try await GeminiService.generateDraft(
+            let draft = try await HFService.generateDraft(
                 contact: contact,
                 nudgeReason: nudgeReason,
                 toneSamples: toneSamples,

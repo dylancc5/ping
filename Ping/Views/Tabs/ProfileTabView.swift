@@ -33,7 +33,6 @@ struct ProfileTabView: View {
 
     @State private var showLinkedInSheet = false
     @State private var showToneSettingsSheet = false
-    @State private var showGeminiKeySheet = false
     @State private var isBackfillingEmbeddings = false
     @State private var backfillResult: String? = nil
     private var linkedInCountKey: String {
@@ -94,9 +93,6 @@ struct ProfileTabView: View {
             }
             .sheet(isPresented: $showToneSettingsSheet) {
                 ToneSettingsSheet()
-            }
-            .sheet(isPresented: $showGeminiKeySheet) {
-                GeminiKeySheet()
             }
             .sheet(isPresented: $showCalendarSuggestions) {
                 CalendarSuggestionsSheet()
@@ -510,41 +506,26 @@ struct ProfileTabView: View {
 
     private var aiSettingsRow: some View {
         VStack(spacing: 0) {
-            // Row 1: Gemini API Key
-            Button {
-                showGeminiKeySheet = true
-            } label: {
-                HStack(spacing: 14) {
-                    Image(systemName: "key.fill")
-                        .font(.system(size: 16))
-                        .foregroundStyle(Color.pingAccent)
-                        .frame(width: 36)
+            // AI status row
+            HStack(spacing: 14) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 16))
+                    .foregroundStyle(Color.pingAccent)
+                    .frame(width: 36)
 
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Gemini API Key")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(Color.pingTextPrimary)
-                        if KeychainHelper.get("GEMINI_API_KEY") != nil {
-                            Text("Configured ✓")
-                                .font(.system(size: 13))
-                                .foregroundStyle(Color.pingSuccess)
-                        } else {
-                            Text("Not set — AI features disabled")
-                                .font(.system(size: 13))
-                                .foregroundStyle(Color.pingDestructive)
-                        }
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Color.pingTextSubtle)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("AI Features")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Color.pingTextPrimary)
+                    Text("Enabled")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.pingSuccess)
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 14)
+
+                Spacer()
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
 
             Divider().padding(.leading, 70)
 
@@ -622,10 +603,6 @@ struct ProfileTabView: View {
 
     private func backfillEmbeddings() async {
         guard !isBackfillingEmbeddings else { return }
-        guard KeychainHelper.get("GEMINI_API_KEY") != nil else {
-            backfillResult = "No API key configured"
-            return
-        }
         guard let userId = SupabaseService.shared.currentUserId else {
             backfillResult = "Please sign in again to continue."
             return
@@ -756,70 +733,6 @@ private struct ToneSettingsSheet: View {
         } catch {
             errorMessage = error.localizedDescription
         }
-    }
-}
-
-// MARK: - Gemini Key Sheet
-
-private struct GeminiKeySheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var apiKey = ""
-    private var hasExistingKey: Bool { KeychainHelper.get("GEMINI_API_KEY") != nil }
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.pingBackground.ignoresSafeArea()
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Gemini powers semantic search and message drafts. Get a free key at ai.google.dev.")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.pingTextSecondary)
-
-                    SecureField("Paste your API key here", text: $apiKey)
-                        .font(.system(size: 15, design: .monospaced))
-                        .foregroundStyle(Color.pingTextPrimary)
-                        .padding(14)
-                        .background(Color.pingSurface2)
-                        .cornerRadius(14)
-
-                    PingButton(title: "Save Key") {
-                        save()
-                    }
-                    .disabled(apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-                    if hasExistingKey {
-                        Button("Remove Key") {
-                            KeychainHelper.delete("GEMINI_API_KEY")
-                            dismiss()
-                        }
-                        .font(.system(size: 15))
-                        .foregroundStyle(Color.pingDestructive)
-                        .frame(maxWidth: .infinity)
-                    }
-
-                    Spacer()
-                }
-                .padding(20)
-            }
-            .navigationTitle("Gemini API Key")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .foregroundStyle(Color.pingAccent)
-                }
-            }
-            .task {
-                apiKey = KeychainHelper.get("GEMINI_API_KEY") ?? ""
-            }
-        }
-    }
-
-    private func save() {
-        let trimmed = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        KeychainHelper.set("GEMINI_API_KEY", value: trimmed)
-        dismiss()
     }
 }
 
