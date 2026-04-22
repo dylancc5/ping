@@ -5,6 +5,7 @@ struct GoalsPanelView: View {
     @ObserveInjection var inject
     @Bindable var viewModel: SearchViewModel
     let contacts: [Contact]
+    var userProfile: UserProfile = UserProfile()
     var onRefresh: (() async -> Void)? = nil
     @State private var showAddGoal = false
     @State private var recVM: RecommendationViewModel = RecommendationViewModel()
@@ -39,14 +40,14 @@ struct GoalsPanelView: View {
         }
         .refreshable {
             await onRefresh?()
-            await recVM.compute(contacts: contacts)
+            await recVM.compute(contacts: contacts, userProfile: userProfile)
         }
         .sheet(isPresented: $showAddGoal) {
             AddGoalSheet(viewModel: viewModel)
         }
         .task(id: contacts.count) {
             // Recompute recommendations whenever the contact list changes size
-            await recVM.compute(contacts: contacts)
+            await recVM.compute(contacts: contacts, userProfile: userProfile)
         }
         .enableInjection()
     }

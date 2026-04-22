@@ -147,6 +147,11 @@ struct PingApp: App {
             ToneSetupView(userId: uid, viewModel: authViewModel) {
                 authViewModel.hasToneSamples = true
             }
+        } else if !authViewModel.hasCompletedTutorial {
+            TutorialFlowView(authViewModel: authViewModel) {
+                authViewModel.hasCompletedTutorial = true
+            }
+            .environment(GoogleIntegrationState.shared)
         } else {
             ContentView(router: appDelegate.router, authViewModel: authViewModel)
         }

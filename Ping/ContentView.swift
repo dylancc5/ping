@@ -23,7 +23,7 @@ struct ContentView: View {
                 }
                 .tag(1)
 
-            SearchTabView()
+            SearchTabView(authViewModel: authViewModel)
                 .tabItem {
                     Label("Search", systemImage: "magnifyingglass")
                 }

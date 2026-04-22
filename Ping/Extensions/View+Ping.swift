@@ -13,6 +13,10 @@ private struct PingCardShadowModifier: ViewModifier {
     }
 }
 
+extension Optional where Wrapped == String {
+    var isNilOrEmpty: Bool { self == nil || self!.isEmpty }
+}
+
 extension Notification.Name {
     static let contactsDidImport = Notification.Name("pingContactsDidImport")
     static let showQuickCapture  = Notification.Name("pingShowQuickCapture")

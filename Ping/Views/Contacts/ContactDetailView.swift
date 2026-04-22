@@ -1,6 +1,8 @@
 import SwiftUI
 import Inject
 import Supabase
+import Speech
+import AVFoundation
 
 struct ContactDetailView: View {
     @ObserveInjection var inject
@@ -360,16 +362,22 @@ private struct LogInteractionSheet: View {
     @State private var selectedType: InteractionType = .message
     @State private var notesText = ""
     @State private var isSaving = false
-    @FocusState private var focused: Bool
 
     var body: some View {
         NavigationStack {
             Form {
                 if isNote {
-                    Section("Note") {
-                        TextField("Add a note…", text: $noteText, axis: .vertical)
-                            .lineLimit(4...)
-                            .focused($focused)
+                    Section {
+                        VoiceInputField(
+                            label: "Note",
+                            placeholder: "Add a note…",
+                            text: $noteText,
+                            style: .multiline,
+                            minHeight: 100,
+                            isRequired: true
+                        )
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                        .listRowBackground(Color.clear)
                     }
                 } else {
                     Section("Interaction Type") {
@@ -380,10 +388,16 @@ private struct LogInteractionSheet: View {
                         }
                         .pickerStyle(.segmented)
                     }
-                    Section("Notes (optional)") {
-                        TextField("Any details…", text: $notesText, axis: .vertical)
-                            .lineLimit(3...)
-                            .focused($focused)
+                    Section {
+                        VoiceInputField(
+                            label: "Notes (optional)",
+                            placeholder: "Any details…",
+                            text: $notesText,
+                            style: .multiline,
+                            minHeight: 80
+                        )
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                        .listRowBackground(Color.clear)
                     }
                 }
             }
@@ -408,7 +422,6 @@ private struct LogInteractionSheet: View {
                     .disabled(isSaving || (isNote && noteText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
                 }
             }
-            .onAppear { focused = true }
         }
     }
 }
@@ -467,14 +480,29 @@ struct EditContactSheet: View {
                     }
                 }
 
-                Section("How You Met") {
-                    TextField("e.g. Conference, intro from Sarah…", text: $howMet, axis: .vertical)
-                        .lineLimit(2...)
+                Section {
+                    VoiceInputField(
+                        label: "How You Met",
+                        placeholder: "e.g. Conference, intro from Sarah…",
+                        text: $howMet,
+                        style: .multiline,
+                        minHeight: 60,
+                        isRequired: true
+                    )
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    .listRowBackground(Color.clear)
                 }
 
-                Section("Notes") {
-                    TextField("Any extra context…", text: $notes, axis: .vertical)
-                        .lineLimit(3...)
+                Section {
+                    VoiceInputField(
+                        label: "Notes",
+                        placeholder: "Any extra context…",
+                        text: $notes,
+                        style: .multiline,
+                        minHeight: 80
+                    )
+                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    .listRowBackground(Color.clear)
                 }
 
                 Section("Contact Info") {

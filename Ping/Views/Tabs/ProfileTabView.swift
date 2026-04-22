@@ -44,6 +44,7 @@ struct ProfileTabView: View {
 
     @State private var showLinkedInSheet = false
     @State private var showToneSettingsSheet = false
+    @State private var showAboutYouSheet = false
     @State private var isBackfillingEmbeddings = false
     @State private var backfillResult: String? = nil
     private var linkedInCountKey: String {
@@ -92,6 +93,9 @@ struct ProfileTabView: View {
             }
             .navigationTitle("You")
             .navigationBarTitleDisplayMode(.large)
+            .sheet(isPresented: $showAboutYouSheet) {
+                AboutYouEditView(authViewModel: authViewModel)
+            }
             .sheet(isPresented: $showLinkedInSheet) {
                 LinkedInImportSheet(
                     onComplete: { count in
@@ -163,6 +167,39 @@ struct ProfileTabView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
+
+            Divider().padding(.leading, 70)
+
+            Button {
+                showAboutYouSheet = true
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: "person.text.rectangle.fill")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Color.pingAccent)
+                        .frame(width: 36)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("About You")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(Color.pingTextPrimary)
+                        Text(authViewModel.userProfile.hasContent
+                             ? "Career, interests & background"
+                             : "Add your background to improve recommendations")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.pingTextMuted)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color.pingTextSubtle)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
+            }
+            .buttonStyle(.plain)
         }
         .background(Color.pingSurface)
         .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -590,7 +627,34 @@ struct ProfileTabView: View {
             }
             .buttonStyle(.plain)
 
-            // Row 3: Embedding Backfill (developer tool — tap AI header 5 times to reveal)
+            Divider().padding(.leading, 70)
+
+            // Row 3: Replay Tutorial
+            Button {
+                authViewModel.hasCompletedTutorial = false
+            } label: {
+                HStack(spacing: 14) {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Color.pingTextMuted)
+                        .frame(width: 36)
+
+                    Text("Replay Tutorial")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Color.pingTextPrimary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color.pingTextSubtle)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
+            }
+            .buttonStyle(.plain)
+
+            // Row 4: Embedding Backfill (developer tool — tap AI header 5 times to reveal)
             if showDeveloperTools {
             Divider().padding(.leading, 70)
 

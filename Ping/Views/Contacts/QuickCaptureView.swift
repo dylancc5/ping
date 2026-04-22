@@ -18,6 +18,7 @@ struct QuickCaptureView: View {
     @State private var showMicPermissionAlert = false
     @State private var showExtractionFailedBanner = false
     @State private var showAISuccessBanner = false
+    @State private var extractionInFlight = false
 
     private var canSave: Bool {
         !draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
@@ -137,32 +138,16 @@ struct QuickCaptureView: View {
     }
 
     private var notesField: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Notes")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(Color.pingTextSecondary)
-
-            ZStack(alignment: .topLeading) {
-                if (draft.notes ?? "").isEmpty {
-                    Text("PM at Google, interested in ML infra…")
-                        .font(.body)
-                        .foregroundStyle(Color.pingTextMuted)
-                        .padding(16)
-                        .allowsHitTesting(false)
-                }
-                TextEditor(text: Binding(
-                    get: { draft.notes ?? "" },
-                    set: { draft.notes = $0.isEmpty ? nil : $0 }
-                ))
-                .font(.body)
-                .foregroundStyle(Color.pingTextPrimary)
-                .frame(minHeight: 80)
-                .padding(12)
-                .scrollContentBackground(.hidden)
-            }
-            .background(Color.pingSurface2)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-        }
+        VoiceInputField(
+            label: "Notes",
+            placeholder: "PM at Google, interested in ML infra…",
+            text: Binding(
+                get: { draft.notes ?? "" },
+                set: { draft.notes = $0.isEmpty ? nil : $0 }
+            ),
+            style: .multiline,
+            minHeight: 80
+        )
     }
 
     private var micButton: some View {
@@ -260,12 +245,15 @@ struct QuickCaptureView: View {
         recordingTask = nil
         isRecording = false
         withAnimation { micScale = 1.0 }
+        // Trigger extraction here; the stream-end path in recordingTask is cancelled so won't double-fire.
         onRecordingFinished()
     }
 
     private func onRecordingFinished() {
-        guard !transcript.isEmpty else { return }
+        guard !transcript.isEmpty, !extractionInFlight else { return }
+        extractionInFlight = true
         Task {
+            defer { extractionInFlight = false }
             if let extracted = try? await HFService.extractContactFromTranscript(transcript) {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     if draft.name.isEmpty   { draft.name    = extracted.name }

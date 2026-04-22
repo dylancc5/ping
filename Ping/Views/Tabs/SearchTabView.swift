@@ -3,6 +3,7 @@ import Inject
 
 struct SearchTabView: View {
     @ObserveInjection var inject
+    var authViewModel: AuthViewModel
     @State private var vm = SearchViewModel()
     @State private var networkVM = NetworkViewModel()
     @State private var debounceTask: Task<Void, Never>?
@@ -16,7 +17,7 @@ struct SearchTabView: View {
                     SemanticSearchView(viewModel: vm)
                         .transition(.opacity)
                 } else {
-                    GoalsPanelView(viewModel: vm, contacts: networkVM.contacts, onRefresh: {
+                    GoalsPanelView(viewModel: vm, contacts: networkVM.contacts, userProfile: authViewModel.userProfile, onRefresh: {
                         await networkVM.loadContacts()
                         await vm.loadGoals(contacts: networkVM.contacts)
                     })
@@ -91,5 +92,5 @@ struct SearchTabView: View {
 }
 
 #Preview {
-    SearchTabView()
+    SearchTabView(authViewModel: AuthViewModel())
 }

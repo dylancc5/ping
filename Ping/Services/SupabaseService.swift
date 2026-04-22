@@ -544,6 +544,62 @@ actor SupabaseService {
         cachedToneSamples = samples
     }
 
+    // MARK: - User Profile (About You)
+
+    func fetchUserProfile(userId: UUID) async throws -> UserProfile {
+        let row: UserProfile = try await client
+            .from("profiles")
+            .select("career_role, career_company, career_industry, career_seniority, interests, city, hometown, school, about_me")
+            .eq("id", value: userId)
+            .single()
+            .execute()
+            .value
+        return row
+    }
+
+    func saveUserProfile(_ profile: UserProfile, userId: UUID) async throws {
+        struct ProfileUpdate: Encodable {
+            let id: UUID
+            let careerRole: String?
+            let careerCompany: String?
+            let careerIndustry: String?
+            let careerSeniority: String?
+            let interests: [String]
+            let city: String?
+            let hometown: String?
+            let school: String?
+            let aboutMe: String?
+            enum CodingKeys: String, CodingKey {
+                case id
+                case careerRole      = "career_role"
+                case careerCompany   = "career_company"
+                case careerIndustry  = "career_industry"
+                case careerSeniority = "career_seniority"
+                case interests
+                case city
+                case hometown
+                case school
+                case aboutMe         = "about_me"
+            }
+        }
+        let payload = ProfileUpdate(
+            id: userId,
+            careerRole: profile.careerRole,
+            careerCompany: profile.careerCompany,
+            careerIndustry: profile.careerIndustry,
+            careerSeniority: profile.careerSeniority,
+            interests: profile.interests,
+            city: profile.city,
+            hometown: profile.hometown,
+            school: profile.school,
+            aboutMe: profile.aboutMe
+        )
+        try await client
+            .from("profiles")
+            .upsert(payload, onConflict: "id")
+            .execute()
+    }
+
     // MARK: - Helpers
 
     private func iso8601String(from date: Date) -> String {

@@ -7,6 +7,9 @@ enum SharedAttribute: Equatable {
     case sharedTag(String)
     case sharedHowMet(String)           // first 2 words of howMet match
     case sharedIndustryKeyword(String)  // matched from predefined vocabulary
+    case sharedInterest(String)         // matches user's own interests
+    case sharedSchool(String)           // same school as user
+    case sharedIndustry(String)         // same industry as user
 }
 
 // MARK: - Result
@@ -24,6 +27,9 @@ struct CommonalityResult: Identifiable {
         case .sharedTag(let tag):             return "Both tagged \(tag)"
         case .sharedHowMet(let context):      return "Both met at \(context)"
         case .sharedIndustryKeyword(let kw):  return "Both in \(kw)"
+        case .sharedInterest(let interest):   return "Both into \(interest)"
+        case .sharedSchool(let school):       return "Both from \(school)"
+        case .sharedIndustry(let industry):   return "Both in \(industry)"
         }
     }
 }
@@ -74,6 +80,62 @@ struct CommonalityMatcher {
             .sorted { $0.count > $1.count }
             .prefix(limit)
             .map { CommonalityResult(id: $0.contact.id, contact: $0.contact, sharedAttributes: $0.attrs) }
+    }
+
+    /// Scores contacts against the current user's profile.
+    /// Returned results include contacts that share company, industry, school, or interests with the user.
+    static func matchedForUser(contacts: [Contact], profile: UserProfile, limit: Int = 10) -> [CommonalityResult] {
+        contacts
+            .compactMap { contact -> CommonalityResult? in
+                let attrs = sharedAttributesBetweenUser(profile: profile, contact: contact)
+                guard !attrs.isEmpty else { return nil }
+                return CommonalityResult(id: contact.id, contact: contact, sharedAttributes: attrs)
+            }
+            .sorted { $0.sharedAttributes.count > $1.sharedAttributes.count }
+            .prefix(limit)
+            .map { $0 }
+    }
+
+    private static func sharedAttributesBetweenUser(profile: UserProfile, contact: Contact) -> [SharedAttribute] {
+        var attrs: [SharedAttribute] = []
+
+        // Same company as user
+        if let userCompany = profile.careerCompany?.lowercased().trimmingCharacters(in: .whitespaces),
+           let contactCompany = contact.company?.lowercased().trimmingCharacters(in: .whitespaces),
+           !userCompany.isEmpty, userCompany == contactCompany {
+            attrs.append(.sameCompany(contact.company!))
+        }
+
+        // Same school
+        if let userSchool = profile.school?.lowercased().trimmingCharacters(in: .whitespaces),
+           !userSchool.isEmpty {
+            let contactText = [(contact.notes ?? ""), contact.howMet, (contact.title ?? "")].joined(separator: " ").lowercased()
+            if contactText.contains(userSchool) {
+                attrs.append(.sharedSchool(profile.school!))
+            }
+        }
+
+        // Shared industry
+        if let userIndustry = profile.careerIndustry?.lowercased().trimmingCharacters(in: .whitespaces),
+           !userIndustry.isEmpty {
+            let contactText = [(contact.title ?? ""), (contact.notes ?? ""), (contact.company ?? "")].joined(separator: " ").lowercased()
+            if contactText.contains(userIndustry) {
+                attrs.append(.sharedIndustry(profile.careerIndustry!))
+            }
+        }
+
+        // Shared interests (user interests vs contact tags/notes)
+        let contactTagsAndNotes = (contact.tags.map { $0.lowercased() } + [(contact.notes ?? "").lowercased()])
+            .joined(separator: " ")
+        for interest in profile.interests {
+            let normalized = interest.lowercased()
+            if !normalized.isEmpty && contactTagsAndNotes.contains(normalized) {
+                attrs.append(.sharedInterest(interest))
+                break // one interest signal per contact is enough
+            }
+        }
+
+        return attrs
     }
 
     // MARK: - Private

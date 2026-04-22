@@ -1,6 +1,7 @@
 import Foundation
 import AuthenticationServices
 import UIKit
+import SwiftUI
 
 @MainActor
 final class AuthViewModel: NSObject, ObservableObject {
@@ -11,6 +12,9 @@ final class AuthViewModel: NSObject, ObservableObject {
     @Published var toneCheckFailed: Bool = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
+    @Published var userProfile: UserProfile = UserProfile()
+
+    @AppStorage("hasCompletedTutorial") var hasCompletedTutorial: Bool = false
 
     /// Tone samples cached for the session — avoids repeated Supabase fetches per draft generation.
     private(set) var cachedToneSamples: [String] = []
@@ -53,6 +57,7 @@ final class AuthViewModel: NSObject, ObservableObject {
                         // then confirm in the background via a live Supabase check.
                         hasToneSamples = UserDefaults.standard.bool(forKey: Self.toneCacheKey(for: uid))
                         await checkToneSamples(userId: uid)
+                        await loadUserProfile(userId: uid)
                     }
                 case .signedOut:
                     userId = nil
@@ -159,6 +164,24 @@ final class AuthViewModel: NSObject, ObservableObject {
             cachedToneSamples = (try? await SupabaseService.shared.fetchToneSamples(userId: uid)) ?? cachedToneSamples
             hasToneSamples = true
             UserDefaults.standard.set(true, forKey: Self.toneCacheKey(for: uid))
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - User Profile
+
+    func loadUserProfile(userId: UUID) async {
+        if let profile = try? await SupabaseService.shared.fetchUserProfile(userId: userId) {
+            userProfile = profile
+        }
+    }
+
+    func saveUserProfile(_ profile: UserProfile) async {
+        guard let uid = userId else { return }
+        do {
+            try await SupabaseService.shared.saveUserProfile(profile, userId: uid)
+            userProfile = profile
         } catch {
             errorMessage = error.localizedDescription
         }

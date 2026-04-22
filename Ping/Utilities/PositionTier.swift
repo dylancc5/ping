@@ -75,4 +75,23 @@ enum PositionTier: String, CaseIterable, Identifiable, Codable, Hashable {
     static func filter(contacts: [Contact], tier: PositionTier) -> [Contact] {
         contacts.filter { classify(title: $0.title) == tier }
     }
+
+    /// Maps a user-facing seniority string (from UserProfile.careerSeniority) to the tier one level above.
+    /// Used to personalize the position-target recommendation heuristic.
+    static func tierAbove(seniority: String) -> PositionTier? {
+        switch seniority.lowercased() {
+        case let s where s.contains("student") || s.contains("intern"):
+            return .ic
+        case let s where s.contains("individual contributor") || s.contains("ic"):
+            return .manager
+        case let s where s.contains("manager"):
+            return .director
+        case let s where s.contains("director"):
+            return .vp
+        case let s where s.contains("vp"):
+            return .executive
+        default:
+            return nil
+        }
+    }
 }

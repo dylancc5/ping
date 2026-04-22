@@ -27,7 +27,7 @@ final class RecommendationViewModel {
 
     // MARK: - Public
 
-    func compute(contacts: [Contact]) async {
+    func compute(contacts: [Contact], userProfile: UserProfile = UserProfile()) async {
         guard !contacts.isEmpty else {
             results = []
             return
@@ -39,9 +39,13 @@ final class RecommendationViewModel {
 
         if filter.enabledModes.contains(.thingsInCommon) {
             all += applyThingsInCommon(contacts: contacts)
+            // Blend in user-profile-aware matches when the profile has content
+            if userProfile.hasContent {
+                all += applyUserProfileMatches(contacts: contacts, profile: userProfile)
+            }
         }
         if filter.enabledModes.contains(.positionTarget) {
-            all += applyPositionTarget(contacts: contacts)
+            all += applyPositionTarget(contacts: contacts, userProfile: userProfile)
         }
         if filter.enabledModes.contains(.recruiterFocus) {
             all += applyRecruiterFocus(contacts: contacts)
@@ -79,10 +83,29 @@ final class RecommendationViewModel {
         }
     }
 
-    private func applyPositionTarget(contacts: [Contact]) -> [RecommendationResult] {
-        let tiers = filter.targetTiers.isEmpty ? [PositionTier.executive, .vp] : Array(filter.targetTiers)
+    private func applyUserProfileMatches(contacts: [Contact], profile: UserProfile) -> [RecommendationResult] {
+        CommonalityMatcher.matchedForUser(contacts: contacts, profile: profile, limit: 5).map { cr in
+            let score = Float(cr.sharedAttributes.count) / 3.0
+            return RecommendationResult(
+                id: cr.id,
+                contact: cr.contact,
+                mode: .thingsInCommon,
+                label: cr.primaryLabel,
+                score: min(score, 1.0)
+            )
+        }
+    }
+
+    private func applyPositionTarget(contacts: [Contact], userProfile: UserProfile = UserProfile()) -> [RecommendationResult] {
+        // If the user has filled in their seniority, use it to anchor the "one tier above" heuristic.
+        var tiers = filter.targetTiers.isEmpty ? [PositionTier.executive, .vp] : Array(filter.targetTiers)
+        if !userProfile.careerSeniority.isNilOrEmpty, let oneTierAbove = PositionTier.tierAbove(seniority: userProfile.careerSeniority!) {
+            // Prepend the personalized tier so it gets priority in dedup
+            tiers = [oneTierAbove] + tiers.filter { $0 != oneTierAbove }
+        }
+        let tiers2 = tiers
         var results: [RecommendationResult] = []
-        for tier in tiers {
+        for tier in tiers2 {
             let matched = PositionTier.filter(contacts: contacts, tier: tier)
                 .sorted { $0.warmthScore > $1.warmthScore }
                 .prefix(5)
