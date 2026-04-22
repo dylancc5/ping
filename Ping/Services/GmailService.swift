@@ -13,7 +13,7 @@ struct GmailService {
 
     private static let messagesURL = "https://gmail.googleapis.com/gmail/v1/users/me/messages"
 
-    /// Fetches the top-10 most-emailed recipients from the last 90 days of sent mail.
+    /// Fetches the top-25 recipients emailed at least once in the last 25 days of sent mail.
     /// Only reads To: headers — never email body content.
     static func fetchContactSuggestions(accessToken: String) async throws -> [ContactSuggestion] {
         let messageList = try await fetchSentMessageList(accessToken: accessToken)
@@ -31,12 +31,12 @@ struct GmailService {
         }
 
         return recipientCounts
-            .filter { $0.value.count >= 3 }
+            .filter { $0.value.count >= 1 }
             .map { (email, data) in
                 ContactSuggestion(name: data.name, email: email, frequency: data.count)
             }
             .sorted { $0.frequency > $1.frequency }
-            .prefix(10)
+            .prefix(25)
             .map { $0 }
     }
 
@@ -46,7 +46,7 @@ struct GmailService {
         var components = URLComponents(string: messagesURL)!
         components.queryItems = [
             URLQueryItem(name: "labelIds", value: "SENT"),
-            URLQueryItem(name: "q", value: "newer_than:90d"),
+            URLQueryItem(name: "q", value: "newer_than:25d"),
             URLQueryItem(name: "maxResults", value: "200")
         ]
         let response: MessageListResponse = try await googleGet(components.url!, accessToken: accessToken)

@@ -64,13 +64,17 @@ private extension UIColor {
 enum WarmthCategory {
     case hot, warm, cool, cold
 
+    @MainActor
     init(score: Double) {
-        let cfg = RemoteConfigService.shared.config
-        if score >= cfg.warmthHotThreshold {
+        self.init(score: score, config: RemoteConfigService.shared.config)
+    }
+
+    init(score: Double, config: RemoteConfig) {
+        if score >= config.warmthHotThreshold {
             self = .hot
-        } else if score >= cfg.warmthWarmThreshold {
+        } else if score >= config.warmthWarmThreshold {
             self = .warm
-        } else if score >= cfg.warmthCoolThreshold {
+        } else if score >= config.warmthCoolThreshold {
             self = .cool
         } else {
             self = .cold

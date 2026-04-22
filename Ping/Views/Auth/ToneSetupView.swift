@@ -1,17 +1,45 @@
 import SwiftUI
 import Inject
 
+private struct ToneScenario {
+    let step: Int
+    let context: String
+    let prompt: String
+}
+
+private let toneScenarios: [ToneScenario] = [
+    ToneScenario(
+        step: 1,
+        context: "A recruiter at a company you've admired reached out on LinkedIn about a role that sounds interesting. You're open to it, but not desperate.",
+        prompt: "Write 3 sentences replying to them in your natural voice."
+    ),
+    ToneScenario(
+        step: 2,
+        context: "You met someone at a networking event last week — they work in your industry and you exchanged contact info. You want to follow up and suggest grabbing coffee.",
+        prompt: "Write 3 sentences reaching out to them."
+    ),
+    ToneScenario(
+        step: 3,
+        context: "A former colleague you respect just announced they started a new job. You haven't talked in a few months and want to congratulate them and stay on their radar.",
+        prompt: "Write 3 sentences reaching out."
+    ),
+]
+
 struct ToneSetupView: View {
     @ObserveInjection var inject
     let userId: UUID
     @ObservedObject var viewModel: AuthViewModel
     let onComplete: () -> Void
 
-    @State private var sampleText: String = ""
+    @State private var stepIndex: Int = 0
+    @State private var responses: [String] = Array(repeating: "", count: toneScenarios.count)
     @FocusState private var editorFocused: Bool
 
+    private var scenario: ToneScenario { toneScenarios[stepIndex] }
+    private var isLastStep: Bool { stepIndex == toneScenarios.count - 1 }
+
     private var canContinue: Bool {
-        !sampleText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !viewModel.isLoading
+        !responses[stepIndex].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !viewModel.isLoading
     }
 
     var body: some View {
@@ -20,28 +48,55 @@ struct ToneSetupView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("How do you usually write?")
+                    // Progress indicator
+                    HStack(spacing: 6) {
+                        ForEach(0..<toneScenarios.count, id: \.self) { i in
+                            Capsule()
+                                .fill(i <= stepIndex ? Color.pingAccent : Color.pingSurface3)
+                                .frame(height: 4)
+                        }
+                    }
+                    .padding(.bottom, 28)
+
+                    Text("Write like yourself")
                         .font(.title2)
                         .fontWeight(.semibold)
                         .foregroundStyle(Color.pingTextPrimary)
-                        .padding(.bottom, 8)
+                        .padding(.bottom, 6)
 
-                    Text("Paste 2–3 sentences in your own voice")
-                        .font(.body)
-                        .foregroundStyle(Color.pingTextSecondary)
-                        .padding(.bottom, 4)
-
-                    Text("Only used to calibrate drafts, never shared")
+                    Text("Step \(scenario.step) of \(toneScenarios.count)")
                         .font(.footnote)
                         .foregroundStyle(Color.pingTextMuted)
                         .padding(.bottom, 20)
 
-                    TextEditor(text: $sampleText)
+                    // Scenario context card
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Scenario")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(Color.pingAccent)
+                            .padding(.bottom, 6)
+                        Text(scenario.context)
+                            .font(.body)
+                            .foregroundStyle(Color.pingTextPrimary)
+                    }
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.pingSurface2)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .padding(.bottom, 16)
+
+                    Text(scenario.prompt)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.pingTextSecondary)
+                        .padding(.bottom, 10)
+
+                    TextEditor(text: $responses[stepIndex])
                         .font(.system(size: 16))
                         .foregroundStyle(Color.pingTextPrimary)
                         .scrollContentBackground(.hidden)
                         .background(Color.pingSurface2)
-                        .frame(minHeight: 80)
+                        .frame(minHeight: 110)
                         .cornerRadius(14)
                         .overlay(
                             RoundedRectangle(cornerRadius: 14)
@@ -53,8 +108,8 @@ struct ToneSetupView: View {
                         .focused($editorFocused)
                         .padding(.bottom, 24)
 
-                    PingButton(title: "Continue") {
-                        Task { await save() }
+                    PingButton(title: isLastStep ? "Finish" : "Next") {
+                        Task { await advance() }
                     }
                     .disabled(!canContinue)
 
@@ -87,12 +142,14 @@ struct ToneSetupView: View {
         .enableInjection()
     }
 
-    private func save() async {
-        let trimmed = sampleText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        await viewModel.saveToneSample(trimmed)
-        if viewModel.errorMessage == nil {
-            onComplete()
+    private func advance() async {
+        if isLastStep {
+            let samples = responses.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+            await viewModel.saveToneSamples(samples)
+            if viewModel.errorMessage == nil { onComplete() }
+        } else {
+            withAnimation { stepIndex += 1 }
+            editorFocused = false
         }
     }
 }

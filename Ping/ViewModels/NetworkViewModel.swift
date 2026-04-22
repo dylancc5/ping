@@ -79,20 +79,45 @@ final class NetworkViewModel {
     }
 
     private let service = SupabaseService.shared
+    private var contactsCachedAt: Date? = nil
+    private static let contactsTTL: TimeInterval = 5 * 60 // 5 minutes
 
-    func loadContacts() async {
+    private var contactsAreFresh: Bool {
+        guard let cachedAt = contactsCachedAt, !contacts.isEmpty else { return false }
+        return Date().timeIntervalSince(cachedAt) < Self.contactsTTL
+    }
+
+    func loadContacts(forceRefresh: Bool = false) async {
         guard let userId = service.currentUserId else {
             self.error = URLError(.userAuthenticationRequired)
             return
         }
+
+        if !forceRefresh && contactsAreFresh { return }
+
+        // If we have stale data, refresh silently in the background.
+        if !forceRefresh && !contacts.isEmpty {
+            Task { await fetchAndUpdateContacts(userId: userId) }
+            return
+        }
+
         isLoading = true
         error = nil
         defer { isLoading = false }
+        await fetchAndUpdateContacts(userId: userId)
+    }
+
+    private func fetchAndUpdateContacts(userId: UUID) async {
         do {
             contacts = try await service.fetchContacts(userId: userId)
+            contactsCachedAt = Date()
         } catch {
             self.error = error
         }
+    }
+
+    func invalidateContactsCache() {
+        contactsCachedAt = nil
     }
 
     func createContact(_ draft: ContactDraft) async {
@@ -103,6 +128,7 @@ final class NetworkViewModel {
         do {
             let created = try await service.createContact(payload: payload)
             contacts.insert(created, at: 0)
+            contactsCachedAt = nil
             Task {
                 let text = "\(created.name), \(created.title ?? "") at \(created.company ?? ""). Met at \(created.howMet). Notes: \(created.notes ?? ""). Tags: \(created.tags.joined(separator: ", "))"
                 if let embedding = try? await GeminiService.embed(text, taskType: .retrievalDocument) {
@@ -133,6 +159,7 @@ final class NetworkViewModel {
         do {
             try await service.deleteContact(id: contact.id)
             contacts.removeAll { $0.id == contact.id }
+            contactsCachedAt = nil
         } catch {
             self.error = error
         }

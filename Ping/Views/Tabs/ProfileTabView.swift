@@ -7,17 +7,28 @@ import Inject
 
 private enum ImportPhase: Equatable {
     case idle
-    case preview(drafts: [ContactDraft], skipped: Int)
+    /// results: classified import actions; toAdd = new inserts, toUpdate = existing matches
+    case preview(results: [DedupeResult])
     case importing(current: Int, total: Int)
-    case done(imported: Int, skipped: Int)
+    case done(imported: Int, updated: Int)
     case failed(String)
+
+    var previewInsertCount: Int {
+        guard case .preview(let results) = self else { return 0 }
+        return results.filter { if case .insert = $0 { return true }; return false }.count
+    }
+
+    var previewUpdateCount: Int {
+        guard case .preview(let results) = self else { return 0 }
+        return results.filter { if case .update = $0 { return true }; return false }.count
+    }
 
     static func == (lhs: ImportPhase, rhs: ImportPhase) -> Bool {
         switch (lhs, rhs) {
         case (.idle, .idle): return true
-        case let (.preview(d1, s1), .preview(d2, s2)): return d1.count == d2.count && s1 == s2
+        case let (.preview(r1), .preview(r2)): return r1.count == r2.count
         case let (.importing(c1, t1), .importing(c2, t2)): return c1 == c2 && t1 == t2
-        case let (.done(i1, s1), .done(i2, s2)): return i1 == i2 && s1 == s2
+        case let (.done(i1, u1), .done(i2, u2)): return i1 == i2 && u1 == u2
         case let (.failed(e1), .failed(e2)): return e1 == e2
         default: return false
         }
@@ -336,13 +347,22 @@ struct ProfileTabView: View {
                         let s = suggestion
                         googleState.gmailSuggestions.removeAll { $0.id == s.id }
                         Task {
-                            guard let userId = SupabaseService.shared.currentUserId else {
+                            let service = SupabaseService.shared
+                            guard let userId = service.currentUserId else {
                                 googleErrorMessage = "Please sign in again to continue."
                                 return
                             }
                             let draft = ContactDraft(name: s.name, howMet: "Gmail", email: s.email)
-                            let payload = ContactInsertPayload(draft: draft, userId: userId)
-                            _ = try? await SupabaseService.shared.createContact(payload: payload)
+                            let existing = (try? await service.fetchContacts(userId: userId)) ?? []
+                            let result = LinkedInImportService.classify(drafts: [draft], existing: existing).first
+                            switch result {
+                            case .insert(let d):
+                                _ = try? await service.createContact(payload: ContactInsertPayload(draft: d, userId: userId))
+                            case .update(let existingContact, let d):
+                                _ = try? await service.upsertContact(existing: existingContact, draft: d)
+                            case nil:
+                                break
+                            }
                         }
                     }
                     .font(.system(size: 13, weight: .semibold))
@@ -389,20 +409,31 @@ struct ProfileTabView: View {
                 return
             }
             let existing = (try? await service.fetchContacts(userId: userId)) ?? []
-            let (toImport, _) = LinkedInImportService.deduplicateAgainstExisting(drafts: drafts, existing: existing)
-            var saved: [Contact] = []
-            for draft in toImport {
-                if let contact = try? await service.createContact(payload: ContactInsertPayload(draft: draft, userId: userId)) {
-                    saved.append(contact)
+            let results = LinkedInImportService.classify(drafts: drafts, existing: existing)
+
+            var newContacts: [Contact] = []
+            var updatedContacts: [Contact] = []
+
+            for result in results {
+                switch result {
+                case .insert(let draft):
+                    if let contact = try? await service.createContact(payload: ContactInsertPayload(draft: draft, userId: userId)) {
+                        newContacts.append(contact)
+                    }
+                case .update(let existingContact, let draft):
+                    if let updated = try? await service.upsertContact(existing: existingContact, draft: draft) {
+                        updatedContacts.append(updated)
+                    }
                 }
             }
-            contactsImportCount = saved.count
-            // Notify NetworkTabView to reload once all contacts are saved.
-            if !saved.isEmpty {
+
+            contactsImportCount = newContacts.count
+            let toEmbed = newContacts + updatedContacts
+            if !toEmbed.isEmpty {
                 NotificationCenter.default.post(name: .contactsDidImport, object: nil)
             }
             Task.detached(priority: .background) {
-                for contact in saved {
+                for contact in toEmbed {
                     let text = "\(contact.name), \(contact.title ?? "") at \(contact.company ?? ""). Met at \(contact.howMet)."
                     if let embedding = try? await GeminiService.embed(text, taskType: .retrievalDocument) {
                         try? await service.updateContactEmbedding(id: contact.id, embeddingString: embedding.pgVectorLiteral)
@@ -657,11 +688,11 @@ private struct ToneSettingsSheet: View {
             ZStack {
                 Color.pingBackground.ignoresSafeArea()
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("How should drafts sound?")
+                    Text("Your writing style")
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(Color.pingTextPrimary)
 
-                    Text("Paste a few sentences in your voice. Ping uses this to personalize draft style.")
+                    Text("Edit your sample responses below. Ping uses these to match your tone when drafting messages.")
                         .font(.subheadline)
                         .foregroundStyle(Color.pingTextSecondary)
 
@@ -715,7 +746,7 @@ private struct ToneSettingsSheet: View {
         guard let userId = await SupabaseService.shared.currentUserId else { return }
         do {
             let samples = try await SupabaseService.shared.fetchToneSamples(userId: userId)
-            toneSample = samples.first ?? ""
+            toneSample = samples.joined(separator: "\n\n")
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -775,13 +806,24 @@ struct CalendarSuggestionsSheet: View {
                                     let s = suggestion
                                     googleState.calendarSuggestions.removeAll { $0.id == s.id }
                                     Task {
-                                        guard let userId = SupabaseService.shared.currentUserId else { return }
-                                        let draft = ContactDraft(name: s.name, howMet: "Met at \(s.eventTitle)", email: s.email)
-                                        let payload = ContactInsertPayload(draft: draft, userId: userId)
-                                        if let contact = try? await SupabaseService.shared.createContact(payload: payload) {
+                                        let service = SupabaseService.shared
+                                        guard let userId = service.currentUserId else { return }
+                                        let draft = ContactDraft(name: s.name, howMet: "Met at \(s.eventTitle)", email: s.email, metAt: s.eventDate)
+                                        let existing = (try? await service.fetchContacts(userId: userId)) ?? []
+                                        let result = LinkedInImportService.classify(drafts: [draft], existing: existing).first
+                                        let savedContact: Contact?
+                                        switch result {
+                                        case .insert(let d):
+                                            savedContact = try? await service.createContact(payload: ContactInsertPayload(draft: d, userId: userId))
+                                        case .update(let existingContact, let d):
+                                            savedContact = try? await service.upsertContact(existing: existingContact, draft: d)
+                                        case nil:
+                                            savedContact = nil
+                                        }
+                                        if let contact = savedContact {
                                             let text = "\(contact.name) at \(contact.company ?? ""). Met at \(s.eventTitle)."
                                             if let embedding = try? await GeminiService.embed(text, taskType: .retrievalDocument) {
-                                                try? await SupabaseService.shared.updateContactEmbedding(id: contact.id, embeddingString: embedding.pgVectorLiteral)
+                                                try? await service.updateContactEmbedding(id: contact.id, embeddingString: embedding.pgVectorLiteral)
                                             }
                                         }
                                     }
@@ -854,12 +896,12 @@ private struct LinkedInImportSheet: View {
         switch phase {
         case .idle:
             instructionsView
-        case .preview(let drafts, let skipped):
-            previewView(drafts: drafts, alreadySkipped: skipped)
+        case .preview(let results):
+            previewView(results: results)
         case .importing(let current, let total):
             progressView(current: current, total: total)
-        case .done(let imported, let skipped):
-            doneView(imported: imported, skipped: skipped)
+        case .done(let imported, let updated):
+            doneView(imported: imported, updated: updated)
         case .failed(let message):
             errorView(message: message)
         }
@@ -922,8 +964,11 @@ private struct LinkedInImportSheet: View {
 
     // MARK: - Preview
 
-    private func previewView(drafts: [ContactDraft], alreadySkipped: Int) -> some View {
-        VStack(spacing: 24) {
+    private func previewView(results: [DedupeResult]) -> some View {
+        let insertCount = results.filter { if case .insert = $0 { return true }; return false }.count
+        let updateCount = results.count - insertCount
+
+        return VStack(spacing: 24) {
             Spacer()
 
             Image(systemName: "person.3.fill")
@@ -931,12 +976,17 @@ private struct LinkedInImportSheet: View {
                 .foregroundStyle(Color.pingAccent)
 
             VStack(spacing: 8) {
-                Text("Found \(drafts.count) connections")
+                Text("Found \(results.count) connection\(results.count == 1 ? "" : "s")")
                     .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(Color.pingTextPrimary)
 
-                if alreadySkipped > 0 {
-                    Text("\(alreadySkipped) already in Ping — will be skipped")
+                if insertCount > 0 {
+                    Text("\(insertCount) new contact\(insertCount == 1 ? "" : "s") to add")
+                        .font(.system(size: 15))
+                        .foregroundStyle(Color.pingTextMuted)
+                }
+                if updateCount > 0 {
+                    Text("\(updateCount) existing contact\(updateCount == 1 ? "" : "s") to update")
                         .font(.system(size: 15))
                         .foregroundStyle(Color.pingTextMuted)
                 }
@@ -946,7 +996,7 @@ private struct LinkedInImportSheet: View {
 
             VStack(spacing: 12) {
                 Button {
-                    Task { await runImport(drafts: drafts, skippedSoFar: alreadySkipped) }
+                    Task { await runImport(results: results) }
                 } label: {
                     Text("Import All")
                         .font(.system(size: 16, weight: .semibold))
@@ -988,7 +1038,7 @@ private struct LinkedInImportSheet: View {
 
     // MARK: - Done
 
-    private func doneView(imported: Int, skipped: Int) -> some View {
+    private func doneView(imported: Int, updated: Int) -> some View {
         VStack(spacing: 24) {
             Spacer()
 
@@ -997,12 +1047,12 @@ private struct LinkedInImportSheet: View {
                 .foregroundStyle(Color.pingSuccess)
 
             VStack(spacing: 8) {
-                Text("\(imported) contacts imported")
+                Text("\(imported) contact\(imported == 1 ? "" : "s") added")
                     .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(Color.pingTextPrimary)
 
-                if skipped > 0 {
-                    Text("\(skipped) duplicate\(skipped == 1 ? "" : "s") skipped")
+                if updated > 0 {
+                    Text("\(updated) contact\(updated == 1 ? "" : "s") updated")
                         .font(.system(size: 15))
                         .foregroundStyle(Color.pingTextMuted)
                 }
@@ -1085,46 +1135,58 @@ private struct LinkedInImportSheet: View {
             return
         }
         let existing = (try? await service.fetchContacts(userId: userId)) ?? []
-        let (toImport, skipped) = LinkedInImportService.deduplicateAgainstExisting(
-            drafts: drafts,
-            existing: existing
-        )
-        phase = .preview(drafts: toImport, skipped: skipped)
+        let results = LinkedInImportService.classify(drafts: drafts, existing: existing)
+        phase = .preview(results: results)
     }
 
     @MainActor
-    private func runImport(drafts: [ContactDraft], skippedSoFar: Int) async {
+    private func runImport(results: [DedupeResult]) async {
         let service = SupabaseService.shared
         guard let userId = await service.currentUserId else {
             phase = .failed("You must be signed in to import contacts.")
             return
         }
 
-        let total = drafts.count
+        let total = results.count
         phase = .importing(current: 0, total: total)
 
-        var successfullyImported: [Contact] = []
+        var newContacts: [Contact] = []
+        var updatedContacts: [Contact] = []
+        var processed = 0
 
-        // Batch insert in groups of 20 to respect Supabase free-tier rate limits
-        let batches = stride(from: 0, to: drafts.count, by: 20).map {
-            Array(drafts[$0 ..< min($0 + 20, drafts.count)])
+        // Batch in groups of 20 to respect Supabase free-tier rate limits
+        let batches = stride(from: 0, to: results.count, by: 20).map {
+            Array(results[$0 ..< min($0 + 20, results.count)])
         }
 
         for batch in batches {
-            for draft in batch {
-                let payload = ContactInsertPayload(draft: draft, userId: userId)
-                if let created = try? await service.createContact(payload: payload) {
-                    successfullyImported.append(created)
+            for result in batch {
+                switch result {
+                case .insert(let draft):
+                    let payload = ContactInsertPayload(draft: draft, userId: userId)
+                    if let created = try? await service.createContact(payload: payload) {
+                        newContacts.append(created)
+                    }
+                case .update(let existing, let draft):
+                    if let updated = try? await service.upsertContact(existing: existing, draft: draft) {
+                        updatedContacts.append(updated)
+                    }
                 }
-                phase = .importing(current: successfullyImported.count, total: total)
+                processed += 1
+                phase = .importing(current: processed, total: total)
             }
         }
 
-        phase = .done(imported: successfullyImported.count, skipped: skippedSoFar + (total - successfullyImported.count))
+        if !newContacts.isEmpty || !updatedContacts.isEmpty {
+            NotificationCenter.default.post(name: .contactsDidImport, object: nil)
+        }
 
-        // Background: generate embeddings throttled at 1/second
+        phase = .done(imported: newContacts.count, updated: updatedContacts.count)
+
+        // Background: generate/regenerate embeddings throttled at 1/second
+        let toEmbed = newContacts + updatedContacts
         Task.detached(priority: .background) {
-            for contact in successfullyImported {
+            for contact in toEmbed {
                 let text = "\(contact.name), \(contact.title ?? "") at \(contact.company ?? ""). Met at \(contact.howMet)."
                 if let embedding = try? await GeminiService.embed(text, taskType: .retrievalDocument) {
                     try? await service.updateContactEmbedding(id: contact.id, embeddingString: embedding.pgVectorLiteral)

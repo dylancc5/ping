@@ -39,11 +39,7 @@
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>UIDeviceFamily</key>
-	<array>
-		<integer>1</integer>
-	</array>
-	<key>NSMicrophoneUsageDescription</key>
+<key>NSMicrophoneUsageDescription</key>
 	<string>Ping uses your microphone so you can quickly capture contact notes by voice.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Ping converts your speech to text to help you save quick contact notes.</string>

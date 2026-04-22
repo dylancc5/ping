@@ -66,6 +66,9 @@ actor SupabaseService {
 
     private let client: SupabaseClient
 
+    // Session cache for tone samples — invalidated on save/replace.
+    private var cachedToneSamples: [String]? = nil
+
     private init() {
         client = SupabaseClient(
             supabaseURL: URL(string: Config.supabaseURL)!,
@@ -98,6 +101,7 @@ actor SupabaseService {
     func signOut() async throws {
         try await client.auth.signOut()
         clearSharedSession()
+        cachedToneSamples = nil
     }
 
     func signInWithApple(idToken: String) async throws {
@@ -190,6 +194,42 @@ actor SupabaseService {
             .update(fields)
             .eq("id", value: id)
             .execute()
+    }
+
+    /// Merges an import draft into an existing contact.
+    /// Import value wins for every non-nil, non-empty field.
+    /// `howMet` is always preserved from the existing contact.
+    /// Tags are merged additively (union).
+    @discardableResult
+    func upsertContact(existing: Contact, draft: ContactDraft) async throws -> Contact {
+        var fields: [String: AnyJSON] = [:]
+
+        if !draft.name.isEmpty                                         { fields["name"]         = .string(draft.name) }
+        if let v = draft.company,    !v.isEmpty                        { fields["company"]      = .string(v) }
+        if let v = draft.title,      !v.isEmpty                        { fields["title"]        = .string(v) }
+        if let v = draft.email,      !v.isEmpty                        { fields["email"]        = .string(v) }
+        if let v = draft.phone,      !v.isEmpty                        { fields["phone"]        = .string(v) }
+        if let v = draft.linkedinUrl, !v.isEmpty                       { fields["linkedin_url"] = .string(v) }
+        if let v = draft.metAt {
+            let iso = ISO8601DateFormatter()
+            fields["met_at"] = .string(iso.string(from: v))
+        }
+
+        let mergedTags = Array(Set(existing.tags + draft.tags))
+        if !mergedTags.isEmpty {
+            fields["tags"] = .array(mergedTags.map { .string($0) })
+        }
+
+        guard !fields.isEmpty else { return existing }
+
+        return try await client
+            .from("contacts")
+            .update(fields)
+            .eq("id", value: existing.id)
+            .select()
+            .single()
+            .execute()
+            .value
     }
 
     /// Writes a Gemini embedding to the contacts table.
@@ -392,7 +432,8 @@ actor SupabaseService {
         threshold: Double? = nil,
         count: Int = 10
     ) async throws -> [ContactSearchResult] {
-        let threshold = threshold ?? RemoteConfigService.shared.config.contactMatchThreshold
+        let defaultThreshold = await MainActor.run { RemoteConfigService.shared.config.contactMatchThreshold }
+        let threshold = threshold ?? defaultThreshold
         let params = MatchContactsParams(
             queryEmbedding: queryEmbedding,
             userIdFilter: userId,
@@ -411,7 +452,8 @@ actor SupabaseService {
         threshold: Double? = nil,
         count: Int = 5
     ) async throws -> [GoalContactMatch] {
-        let threshold = threshold ?? RemoteConfigService.shared.config.goalMatchThreshold
+        let defaultThreshold = await MainActor.run { RemoteConfigService.shared.config.goalMatchThreshold }
+        let threshold = threshold ?? defaultThreshold
         let params = MatchContactsForGoalParams(
             goalIdParam: goalId,
             userIdFilter: userId,
@@ -465,6 +507,7 @@ actor SupabaseService {
     }
 
     func fetchToneSamples(userId: UUID) async throws -> [String] {
+        if let cached = cachedToneSamples { return cached }
         let row: ProfileRow = try await client
             .from("profiles")
             .select("tone_samples")
@@ -472,7 +515,9 @@ actor SupabaseService {
             .single()
             .execute()
             .value
-        return row.toneSamples ?? []
+        let samples = row.toneSamples ?? []
+        cachedToneSamples = samples
+        return samples
     }
 
     /// Appends a new tone sample to the user's existing list.
@@ -485,9 +530,10 @@ actor SupabaseService {
             .from("profiles")
             .upsert(payload, onConflict: "id")
             .execute()
+        cachedToneSamples = merged
     }
 
-    /// Replaces the entire tone samples list with a single updated sample.
+    /// Replaces the entire tone samples list.
     /// Used from the Tone Settings sheet when the user edits their existing tone.
     func replaceToneSamples(_ samples: [String], userId: UUID) async throws {
         let payload = ToneSampleUpsert(id: userId, toneSamples: samples)
@@ -495,6 +541,7 @@ actor SupabaseService {
             .from("profiles")
             .upsert(payload, onConflict: "id")
             .execute()
+        cachedToneSamples = samples
     }
 
     // MARK: - Helpers

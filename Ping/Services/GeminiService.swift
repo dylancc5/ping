@@ -10,10 +10,11 @@ struct GeminiService {
 
     /// Returns a 768-dimensional embedding for the given text via the gemini-embed edge function.
     static func embed(_ text: String, taskType: EmbeddingTaskType = .retrievalDocument) async throws -> [Float] {
+        let model = await MainActor.run { RemoteConfigService.shared.config.embeddingModel }
         let body = EmbedRequest(
             text: text,
             taskType: taskType.rawValue,
-            model: RemoteConfigService.shared.config.embeddingModel
+            model: model
         )
         let response: EmbedResponse = try await APIClient.postEdgeFunction("gemini-embed", body: body)
         return response.values.map { Float($0) }

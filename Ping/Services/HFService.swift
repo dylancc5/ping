@@ -37,12 +37,13 @@ struct HFService {
 
         let systemPrompt = buildDraftSystemPrompt(contact: contact, nudgeReason: nudgeReason, toneText: toneText)
 
+        let cfg = await MainActor.run { RemoteConfigService.shared.config }
         let body = GenerateRequest(
             prompt: "Draft the message.",
             systemPrompt: systemPrompt,
-            temperature: RemoteConfigService.shared.config.hfDraftTemperature,
-            maxTokens: RemoteConfigService.shared.config.hfDraftMaxTokens,
-            model: RemoteConfigService.shared.config.hfGenerationModel
+            temperature: cfg.hfDraftTemperature,
+            maxTokens: cfg.hfDraftMaxTokens,
+            model: cfg.hfGenerationModel
         )
         let response: GenerateResponse = try await APIClient.postEdgeFunction("hf-generate", body: body)
         return response.text
@@ -68,12 +69,13 @@ struct HFService {
         For "how_met": describe the context in 3-6 words ("SCET career fair", "Berkeley CS class")
         """
 
+        let model = await MainActor.run { RemoteConfigService.shared.config.hfGenerationModel }
         let body = GenerateRequest(
             prompt: prompt,
             systemPrompt: nil,
             temperature: 0.2,
             maxTokens: 256,
-            model: RemoteConfigService.shared.config.hfGenerationModel
+            model: model
         )
         let response: GenerateResponse = try await APIClient.postEdgeFunction("hf-generate", body: body)
         return try parseContactDraft(from: response.text)
@@ -93,12 +95,13 @@ struct HFService {
         Examples: casual hallway chat = 0.1, "follow up next week about the role" = 0.9
         """
 
+        let model = await MainActor.run { RemoteConfigService.shared.config.hfGenerationModel }
         let body = GenerateRequest(
             prompt: prompt,
             systemPrompt: nil,
             temperature: 0.1,
             maxTokens: 16,
-            model: RemoteConfigService.shared.config.hfGenerationModel
+            model: model
         )
         let response: GenerateResponse = try await APIClient.postEdgeFunction("hf-generate", body: body)
         let value = Double(response.text.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0.5

@@ -26,7 +26,7 @@ struct GoogleCalendarService {
         let response: CalendarEventsResponse = try await googleGet(components.url!, accessToken: accessToken)
 
         return (response.items ?? [])
-            .filter { ($0.attendees?.count ?? 0) >= 2 }
+            .filter { !($0.attendees?.isEmpty ?? true) }
             .flatMap { event -> [CalendarSuggestion] in
                 let date = event.start?.dateTime ?? event.start?.date.flatMap { parseDate($0) } ?? now
                 return (event.attendees ?? [])

@@ -40,21 +40,41 @@ final class SearchViewModel {
     var error: Error? = nil
 
     private let service = SupabaseService.shared
+    private var goalsCachedAt: Date? = nil
+    private static let goalsTTL: TimeInterval = 10 * 60 // 10 minutes
+
+    private var goalsAreFresh: Bool {
+        guard let cachedAt = goalsCachedAt, !goals.isEmpty else { return false }
+        return Date().timeIntervalSince(cachedAt) < Self.goalsTTL
+    }
 
     // MARK: - Goals
 
     func loadGoals(contacts: [Contact] = []) async {
         guard let userId = service.currentUserId else { return }
+
+        // Serve stale cache immediately; kick off a background refresh when stale.
+        if goalsAreFresh { return }
+        if !goals.isEmpty {
+            Task { await refreshGoals(userId: userId, contacts: contacts) }
+            return
+        }
+
+        // First load — show spinner.
         isLoadingGoals = true
         error = nil
         defer { isLoadingGoals = false }
+        await refreshGoals(userId: userId, contacts: contacts)
+    }
+
+    private func refreshGoals(userId: UUID, contacts: [Contact]) async {
         do {
             goals = try await service.fetchGoals(userId: userId)
             await loadGoalMatches(userId: userId, contacts: contacts)
-            // Batch-fetch full Contact objects for all matched IDs (one query, not N per row).
             let allMatchIds = Array(Set(goalMatches.values.flatMap { $0.map { $0.id } }))
             let fullContacts = (try? await service.fetchContacts(ids: allMatchIds)) ?? []
             matchedContacts = Dictionary(uniqueKeysWithValues: fullContacts.map { ($0.id, $0) })
+            goalsCachedAt = Date()
         } catch {
             self.error = error
         }
@@ -67,6 +87,7 @@ final class SearchViewModel {
         do {
             let goal = try await service.createGoal(userId: userId, text: text)
             goals.insert(goal, at: 0)
+            goalsCachedAt = nil
             return goal
         } catch {
             self.error = error
@@ -79,6 +100,7 @@ final class SearchViewModel {
             try await service.deactivateGoal(id: goal.id)
             goals.removeAll { $0.id == goal.id }
             goalMatches.removeValue(forKey: goal.id)
+            goalsCachedAt = nil
         } catch {
             self.error = error
         }

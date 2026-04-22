@@ -12,6 +12,11 @@ final class AuthViewModel: NSObject, ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
 
+    /// Tone samples cached for the session — avoids repeated Supabase fetches per draft generation.
+    private(set) var cachedToneSamples: [String] = []
+
+    private static func toneCacheKey(for userId: UUID) -> String { "hasToneSamples_\(userId)" }
+
     /// True while we know a valid local session exists but the auth stream
     /// hasn't yet fired its initial .signedIn event. Prevents a flash of
     /// WelcomeView on cold launch for already-authenticated users.
@@ -44,6 +49,9 @@ final class AuthViewModel: NSObject, ObservableObject {
                     isAuthenticated = uid != nil
                     isRestoringSession = false
                     if let uid {
+                        // Apply cached flag immediately to suppress the tone-setup flash,
+                        // then confirm in the background via a live Supabase check.
+                        hasToneSamples = UserDefaults.standard.bool(forKey: Self.toneCacheKey(for: uid))
                         await checkToneSamples(userId: uid)
                     }
                 case .signedOut:
@@ -51,6 +59,7 @@ final class AuthViewModel: NSObject, ObservableObject {
                     isAuthenticated = false
                     hasToneSamples = false
                     toneCheckFailed = false
+                    cachedToneSamples = []
                     isRestoringSession = false
                     GoogleIntegrationState.shared.googleUser = nil
                     GoogleIntegrationState.shared.calendarSuggestions = []
@@ -131,10 +140,12 @@ final class AuthViewModel: NSObject, ObservableObject {
 
     func checkToneSamples(userId: UUID) async {
         do {
-            hasToneSamples = try await SupabaseService.shared.hasToneSamples(userId: userId)
+            let samples = try await SupabaseService.shared.fetchToneSamples(userId: userId)
+            cachedToneSamples = samples
+            hasToneSamples = !samples.isEmpty
             toneCheckFailed = false
+            UserDefaults.standard.set(hasToneSamples, forKey: Self.toneCacheKey(for: userId))
         } catch {
-            hasToneSamples = false
             toneCheckFailed = true
         }
     }
@@ -145,7 +156,23 @@ final class AuthViewModel: NSObject, ObservableObject {
         defer { isLoading = false }
         do {
             try await SupabaseService.shared.saveToneSample(text, userId: uid)
+            cachedToneSamples = (try? await SupabaseService.shared.fetchToneSamples(userId: uid)) ?? cachedToneSamples
             hasToneSamples = true
+            UserDefaults.standard.set(true, forKey: Self.toneCacheKey(for: uid))
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func saveToneSamples(_ samples: [String]) async {
+        guard let uid = userId else { return }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            try await SupabaseService.shared.replaceToneSamples(samples, userId: uid)
+            cachedToneSamples = samples
+            hasToneSamples = true
+            UserDefaults.standard.set(true, forKey: Self.toneCacheKey(for: uid))
         } catch {
             errorMessage = error.localizedDescription
         }
